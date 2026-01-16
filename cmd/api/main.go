@@ -29,7 +29,8 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	}
 	userRepository := user.NewUserRepository(db)
 	userRegistrationUseCase := user.NewUserUserRegistrationUseCase(userRepository)
-	userController := user.NewUserController(userRegistrationUseCase)
+	findUsersUseCase := user.NewFindUsersUseCase(userRepository)
+	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase)
 
 	httpConfig := config.HttpConfig{
 		Port: 8080,
@@ -40,6 +41,7 @@ func run(ctx context.Context, w io.Writer, args []string) error {
     server := config.SetUpAndRunServer(
 		httpConfig,
 		userController.RegisterUser(),
+		userController.FindUsers(),
 	)
 
 	return gracefulShutdown(

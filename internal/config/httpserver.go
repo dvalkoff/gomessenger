@@ -11,8 +11,12 @@ import (
 func SetUpAndRunServer(
 	config HttpConfig,
 	handleRegisterUser http.Handler,
+	handleFindUsers http.Handler,
 ) *http.Server {
-	handler := NewHandlers(handleRegisterUser)
+	handler := NewHandlers(
+		handleRegisterUser,
+		handleFindUsers,
+	)
 	httpServer := &http.Server{
 		Addr: fmt.Sprintf(":%d", config.Port),
 		Handler: handler,
@@ -31,13 +35,21 @@ func SetUpAndRunServer(
 	return httpServer
 }
 
-func NewHandlers(handleRegisterUser http.Handler) http.Handler {
+func NewHandlers(
+	handleRegisterUser http.Handler,
+	handleFindUsers http.Handler,
+) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(mux, handleRegisterUser)
+	addRoutes(mux, handleRegisterUser, handleFindUsers)
 	var handler http.Handler = mux
 	return handler
 }
 
-func addRoutes(mux *http.ServeMux, handleRegisterUser http.Handler) {
+func addRoutes(
+	mux *http.ServeMux,
+	handleRegisterUser http.Handler,
+	handleFindUsers http.Handler,
+) {
 	mux.Handle("POST /users", handleRegisterUser)
+	mux.Handle("GET /users/{nickname}", handleFindUsers)
 }
