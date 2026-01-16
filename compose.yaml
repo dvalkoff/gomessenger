@@ -1,0 +1,50 @@
+# Use postgres/example user/password credentials
+
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: messenger_app
+      POSTGRES_DB: messenger
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  adminer:
+    image: adminer
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - 80:8080
+
+  liquibase:
+    build: ./migrations/
+    container_name: liquibase
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://db:5432/messenger
+      LIQUIBASE_COMMAND_USERNAME: messenger_app
+      LIQUIBASE_COMMAND_PASSWORD: password
+
+  messenger:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      liquibase:
+        condition: service_completed_successfully
+    ports:
+      - 8080:8080
+    environment:
+      DB_CONNECTION_STR: postgres://messenger_app:password@db:5432/messenger?sslmode=disable
