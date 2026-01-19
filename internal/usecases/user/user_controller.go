@@ -48,7 +48,7 @@ func (controller *userController) FindUsers() http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			nickname := r.PathValue("nickname")
 			if len(nickname) == 0 {
-				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("Nickname parameter shouldn't be empty"))
+				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
 				return
 			}
 			users, err := controller.findUsersUseCase.FindUsers(nickname)

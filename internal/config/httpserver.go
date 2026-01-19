@@ -12,10 +12,14 @@ func SetUpAndRunServer(
 	config HttpConfig,
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
+	handleCreateChat http.Handler,
+	addUserToChat http.Handler,
 ) *http.Server {
 	handler := NewHandlers(
 		handleRegisterUser,
 		handleFindUsers,
+		handleCreateChat,
+		addUserToChat,
 	)
 	httpServer := &http.Server{
 		Addr: fmt.Sprintf(":%d", config.Port),
@@ -38,9 +42,17 @@ func SetUpAndRunServer(
 func NewHandlers(
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
+	handleCreateChat http.Handler,
+	addUserToChat http.Handler,
 ) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(mux, handleRegisterUser, handleFindUsers)
+	addRoutes(
+		mux,
+		handleRegisterUser,
+		handleFindUsers,
+		handleCreateChat,
+		addUserToChat,
+	)
 	var handler http.Handler = mux
 	return handler
 }
@@ -49,7 +61,11 @@ func addRoutes(
 	mux *http.ServeMux,
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
+	handleCreateChat http.Handler,
+	addUserToChat http.Handler,
 ) {
 	mux.Handle("POST /users", handleRegisterUser)
 	mux.Handle("GET /users/{nickname}", handleFindUsers)
+	mux.Handle("POST /users/{nickname}/chats", handleCreateChat)
+	mux.Handle("PATCH /users/{nickname}/chats/participants", addUserToChat)
 }

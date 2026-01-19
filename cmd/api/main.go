@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dvalkoff/gomessenger/internal/config"
+	"github.com/dvalkoff/gomessenger/internal/usecases/chat"
 	"github.com/dvalkoff/gomessenger/internal/usecases/user"
 )
 
@@ -32,6 +33,10 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	findUsersUseCase := user.NewFindUsersUseCase(userRepository)
 	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase)
 
+	chatRepository := chat.NewChatRepository(db)
+	createChatUseCase := chat.NewCreateChatUseCase(chatRepository)
+	chatController := chat.NewChatController(createChatUseCase)
+
 	httpConfig := config.HttpConfig{
 		Port: 8080,
 		ReadTimeoutMs: 10000,
@@ -42,6 +47,8 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 		httpConfig,
 		userController.RegisterUser(),
 		userController.FindUsers(),
+		chatController.CreateChat(),
+		chatController.AddUserToChat(),
 	)
 
 	return gracefulShutdown(
