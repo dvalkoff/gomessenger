@@ -34,7 +34,7 @@ func (controller *chatController) CreateChat() http.Handler {
 				helper.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			createChatInfo.UserNickname = nickname
+			createChatInfo.CreatorNickname = nickname
 
 			createdChat, err := controller.createChatUseCase.CreateChat(createChatInfo)
 			if err != nil {

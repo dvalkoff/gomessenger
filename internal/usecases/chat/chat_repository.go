@@ -1,6 +1,8 @@
 package chat
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type ChatRow struct {
 	id int
@@ -14,8 +16,8 @@ type ChatUserRow struct {
 }
 
 type ChatRepository interface {
-	CreateChat(name string, creatorNickname string) (*ChatRow, error)
-	AddUserToChat(tx *sql.Tx, chatId int, nickname string, role string) (ChatUserRow, error)
+	CreateChat(createChatInfo CreateChatInfo) (*ChatRow, error)
+	AddUsersToChat(chatId int, users []ChatUserRow) (error)
 	GetChat(chatId int) (*ChatRow, error)
 	GetChatIdsByUser(nickname string) ([]int, error)
 	GetNicknamesByChatId(chatId int) ([]string, error)
@@ -25,31 +27,39 @@ type ChatRepository interface {
 type chatRepository struct {
 	db *sql.DB
 }
+// https://blog.thibaut-rousseau.com/blog/sql-transactions-in-go-the-good-way/
 
 func NewChatRepository(db *sql.DB) ChatRepository {
 	return &chatRepository{db: db}
 }
 
-func (repository *chatRepository) CreateChat(name string, creatorNickname string) (*ChatRow, error) {
-	tx, err := repository.db.Begin() // TODO: how to I specify timeout?
+func (repository *chatRepository) CreateChat(createChatInfo CreateChatInfo) (*ChatRow, error) {
+	tx, err := repository.db.Begin()
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Commit() // TODO: should I close tx this way? should I catch err?
+	defer tx.Commit()
 
-	chatId, err := repository.insertChatAndGetId(tx, name)
+	chatId, err := repository.insertChatAndGetId(tx, createChatInfo.Name)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
-	chatCreatorRole := "admin"
-	chatUserRow, err := repository.AddUserToChat(tx, chatId, creatorNickname, chatCreatorRole)
+	usersToAdd := make([]ChatUserRow, 0, len(createChatInfo.Users) + 1)
+	usersToAdd = append(usersToAdd, ChatUserRow{createChatInfo.CreatorNickname, "admin"})
+	for _, userToAdd := range createChatInfo.Users {
+		usersToAdd = append(usersToAdd, ChatUserRow{userToAdd, "user"})
+	}
+
+	err = repository.addUsersToChatInTx(tx, chatId, usersToAdd)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	return &ChatRow{
 		id: int(chatId),
-		name: name,
-		users: []ChatUserRow{chatUserRow},
+		name: createChatInfo.Name,
+		users: usersToAdd,
 	}, nil
 }
 
@@ -63,19 +73,33 @@ func (repository *chatRepository) insertChatAndGetId(tx *sql.Tx, name string) (i
 	return chatId, nil
 }
 
-func (repository *chatRepository) AddUserToChat(tx *sql.Tx, chatId int, nickname string, role string) (ChatUserRow, error) {
+func (repository *chatRepository) AddUsersToChat(chatId int, users []ChatUserRow) error {
+	tx, err := repository.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+	err = repository.addUsersToChatInTx(tx, chatId, users)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func (repository *chatRepository) addUsersToChatInTx(tx *sql.Tx, chatId int, users []ChatUserRow) error {
 	sql := `INSERT INTO messenger.chats_users(user_nickname, chat_id, role)
 	VALUES($1, $2, $3)`
-	var err error
-	if tx != nil {
-		_, err = tx.Exec(sql, nickname, chatId, role) 
-	} else {
-		_, err = repository.db.Exec(sql, nickname, chatId, role)
-	}
+	stmt, err := tx.Prepare(sql)
 	if err != nil {
-		return ChatUserRow{}, err
+		return err
 	}
-	return ChatUserRow{nickname: nickname, role: role}, nil
+	for _, user := range users {
+		if _, err := stmt.Exec(user.nickname, chatId, user.role); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (repository *chatRepository) GetChat(chatId int) (*ChatRow, error) {
