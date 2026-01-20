@@ -1,6 +1,8 @@
 package chat
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type CreateChatInfo struct {
 	Name string `json:"name"`
@@ -30,10 +32,11 @@ type CreateChatUseCase interface {
 
 type createChatUseCase struct {
 	chatRepository ChatRepository
+	messagingHub *Hub
 }
 
-func NewCreateChatUseCase(chatRepository ChatRepository) CreateChatUseCase {
-	return &createChatUseCase{chatRepository: chatRepository}
+func NewCreateChatUseCase(chatRepository ChatRepository, messagingHub *Hub) CreateChatUseCase {
+	return &createChatUseCase{chatRepository: chatRepository, messagingHub: messagingHub}
 }
 
 func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (*ChatInfo, error) {
@@ -41,6 +44,8 @@ func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (*Ch
 	if err != nil {
 		return nil, err
 	}
+
+	useCase.messagingHub.RegisterChat <- NewChat(chat.id)
 	return mapChatInfo(chat), nil
 }
 
@@ -70,7 +75,7 @@ func findUserByNickname(users []ChatUserRow, nickname string) *ChatUserRow {
 	return nil
 }
 
-func mapChatInfo(chat *Chat) *ChatInfo {
+func mapChatInfo(chat *ChatRow) *ChatInfo {
 	return &ChatInfo{
 		Id: chat.id,
 		Name: chat.name,

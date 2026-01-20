@@ -14,12 +14,14 @@ func SetUpAndRunServer(
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
+	getRealtimeUpdates http.Handler,
 ) *http.Server {
 	handler := NewHandlers(
 		handleRegisterUser,
 		handleFindUsers,
 		handleCreateChat,
 		addUserToChat,
+		getRealtimeUpdates,
 	)
 	httpServer := &http.Server{
 		Addr: fmt.Sprintf(":%d", config.Port),
@@ -44,6 +46,7 @@ func NewHandlers(
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
+	getRealtimeUpdates http.Handler,
 ) http.Handler {
 	mux := http.NewServeMux()
 	addRoutes(
@@ -52,6 +55,7 @@ func NewHandlers(
 		handleFindUsers,
 		handleCreateChat,
 		addUserToChat,
+		getRealtimeUpdates,
 	)
 	var handler http.Handler = mux
 	return handler
@@ -63,9 +67,13 @@ func addRoutes(
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
+	getRealtimeUpdates http.Handler,
 ) {
 	mux.Handle("POST /users", handleRegisterUser)
 	mux.Handle("GET /users/{nickname}", handleFindUsers)
+
 	mux.Handle("POST /users/{nickname}/chats", handleCreateChat)
 	mux.Handle("PATCH /users/{nickname}/chats/participants", addUserToChat)
+	
+	mux.Handle("GET /users/{nickname}/messaging", getRealtimeUpdates)
 }

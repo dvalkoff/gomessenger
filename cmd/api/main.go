@@ -34,8 +34,12 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase)
 
 	chatRepository := chat.NewChatRepository(db)
-	createChatUseCase := chat.NewCreateChatUseCase(chatRepository)
+	hub := chat.NewHub(chatRepository)
+	go hub.Run()
+	createChatUseCase := chat.NewCreateChatUseCase(chatRepository, hub)
+	
 	chatController := chat.NewChatController(createChatUseCase)
+	messagingController := chat.NewMessagingConrtoller(hub)
 
 	httpConfig := config.HttpConfig{
 		Port: 8080,
@@ -49,6 +53,7 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 		userController.FindUsers(),
 		chatController.CreateChat(),
 		chatController.AddUserToChat(),
+		messagingController.GetRealtimeUpdates(),
 	)
 
 	return gracefulShutdown(

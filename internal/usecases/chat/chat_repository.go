@@ -2,7 +2,7 @@ package chat
 
 import "database/sql"
 
-type Chat struct {
+type ChatRow struct {
 	id int
 	name string
 	users []ChatUserRow
@@ -14,9 +14,12 @@ type ChatUserRow struct {
 }
 
 type ChatRepository interface {
-	CreateChat(name string, creatorNickname string) (*Chat, error)
+	CreateChat(name string, creatorNickname string) (*ChatRow, error)
 	AddUserToChat(tx *sql.Tx, chatId int, nickname string, role string) (ChatUserRow, error)
-	GetChat(chatId int) (*Chat, error)
+	GetChat(chatId int) (*ChatRow, error)
+	GetChatIdsByUser(nickname string) ([]int, error)
+	GetNicknamesByChatId(chatId int) ([]string, error)
+	GetChatIds() ([]int, error)
 }
 
 type chatRepository struct {
@@ -27,7 +30,7 @@ func NewChatRepository(db *sql.DB) ChatRepository {
 	return &chatRepository{db: db}
 }
 
-func (repository *chatRepository) CreateChat(name string, creatorNickname string) (*Chat, error) {
+func (repository *chatRepository) CreateChat(name string, creatorNickname string) (*ChatRow, error) {
 	tx, err := repository.db.Begin() // TODO: how to I specify timeout?
 	if err != nil {
 		return nil, err
@@ -43,7 +46,7 @@ func (repository *chatRepository) CreateChat(name string, creatorNickname string
 	if err != nil {
 		return nil, err
 	}
-	return &Chat{
+	return &ChatRow{
 		id: int(chatId),
 		name: name,
 		users: []ChatUserRow{chatUserRow},
@@ -75,9 +78,9 @@ func (repository *chatRepository) AddUserToChat(tx *sql.Tx, chatId int, nickname
 	return ChatUserRow{nickname: nickname, role: role}, nil
 }
 
-func (repository *chatRepository) GetChat(chatId int) (*Chat, error) {
+func (repository *chatRepository) GetChat(chatId int) (*ChatRow, error) {
 	getChatSql := `SELECT id, name FROM messenger.chats WHERE id = $1`
-	chat := Chat{}
+	chat := ChatRow{}
 	err := repository.db.QueryRow(getChatSql, chatId).Scan(&chat.id, &chat.name)
 	if err != nil {
 		return nil, err
@@ -102,4 +105,61 @@ func (repository *chatRepository) GetChat(chatId int) (*Chat, error) {
 		return nil, err
 	}
 	return &chat, nil
+}
+
+func (repository *chatRepository) GetChatIdsByUser(nickname string) ([]int, error) {
+	sql := `SELECT chat_id FROM messenger.chats_users WHERE user_nickname = $1`
+	rows, err := repository.db.Query(sql, nickname)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	chatIds := make([]int, 0)
+	for rows.Next() {
+		chatId := 0
+		rows.Scan(&chatId)
+		chatIds = append(chatIds, chatId)
+	}
+	if rows.Err() != nil {
+		return nil, err
+	}
+	return chatIds, nil
+}
+
+func (repository *chatRepository) GetNicknamesByChatId(chatId int) ([]string, error) {
+	sql := `SELECT user_nickname FROM messenger.chats_users WHERE chat_id = $1`
+	rows, err := repository.db.Query(sql, chatId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	nicknames := make([]string, 0)
+	for rows.Next() {
+		var nickname string
+		rows.Scan(&nickname)
+		nicknames = append(nicknames, nickname)
+	}
+	if rows.Err() != nil {
+		return nil, err
+	}
+	return nicknames, nil
+}
+
+func (repository *chatRepository) GetChatIds() ([]int, error) {
+	sql := `SELECT id FROM messenger.chats`
+	rows, err := repository.db.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	chatIds := make([]int, 0)
+	for rows.Next() {
+		chatId := 0
+		rows.Scan(&chatId)
+		chatIds = append(chatIds, chatId)
+	}
+	if rows.Err() != nil {
+		return nil, err
+	}
+	return chatIds, nil
 }
