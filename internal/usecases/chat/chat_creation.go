@@ -46,7 +46,7 @@ func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (*Ch
 		return nil, err
 	}
 
-	useCase.messagingHub.RegisterChat <- NewChat(chat.id)
+	useCase.messagingHub.RegisterChat <- chat.id
 	return mapChatInfo(chat), nil
 }
 
@@ -68,7 +68,9 @@ func (useCase *createChatUseCase) AddUserToChat(user string, addUserToChatInfo A
 		return nil, err
 	}
 	chat.users = append(chat.users, chatUserRow)
-	// TODO: add user to hub if he/she is online
+
+	useCase.messagingHub.UpdateClient<-addUserToChatInfo.Nickname
+
 	return mapChatInfo(chat), nil
 }
 

@@ -1,8 +1,8 @@
 package chat
 
 import (
+	"encoding/json"
 	"log/slog"
-	"net/http"
 	"strings"
 	"time"
 
@@ -23,21 +23,18 @@ const (
 	maxMessageSize = 512
 )
 
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
-)
-
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
 type Message struct {
+	Id int `json:"id"`
 	MessageType string `json:"messageType"`
 	ChatId int `json:"chatId"`
 	Sender string `json:"sender"`
 	Payload string `json:"payload"`
+	SentAt time.Time `json:"sentAt"`
 }
 
 type Client struct {
@@ -56,15 +53,26 @@ func (c *Client) sendMessage() {
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		message := Message{}
-		message.Sender = c.nickname
-		err := c.conn.ReadJSON(&message)
+		_, reader, err := c.conn.NextReader()
 		if err != nil {
-			slog.Error("Failed to send message", "error", err)
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				slog.Info("Connection was closed by a client", "error", err)
+			} else {
+				slog.Error("Failed to read from socket", "error", err)
+			}
+			return
 		}
 
+		message := Message{}
+		err = json.NewDecoder(reader).Decode(&message)
+		if err != nil {
+			slog.Error("Failed to decode message to json", "error", err)
+			return
+		}
+		message.Sender = c.nickname
+		message.SentAt = time.Now()
 		message.Payload = strings.TrimSpace(message.Payload)
-		c.hub.chats[message.ChatId].messages <- message
+		c.hub.chats[message.ChatId].messages <- message // TODO: remove map access, replace with channels
 	}
 }
 
@@ -77,39 +85,22 @@ func (c *Client) readMessages() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The hub closed the channel.
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				slog.Info("Messages channel was closed for client", "nickname", c.nickname)
 				return
 			}
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			err := c.conn.WriteJSON(message)
 			if err != nil {
 				slog.Error("Failed to write message to connection", "error", err)
+				return
 			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				slog.Error("Failed to ping client", "error", err)
 				return
 			}
 		}
 	}
-}
-
-func serve(nickname string, hub *Hub, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		slog.Error("Failed to upgrate HTTP connection to Websockets", "error", err)
-		return
-	}
-	client := &Client{
-		nickname: nickname,
-		hub: hub,
-		conn: conn,
-		send: make(chan Message, 256),
-	}
-	client.hub.registerClient <- client
-
-	go client.readMessages()
-	go client.sendMessage()
 }

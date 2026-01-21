@@ -8,20 +8,15 @@ import (
 )
 
 type MessagingConrtoller interface {
-	GetUpdates() http.Handler
 	GetRealtimeUpdates() http.Handler
 }
 
 type messagingConrtoller struct {
-	hub *Hub
+	messagingService MessagingService
 }
 
-func NewMessagingConrtoller(hub *Hub) MessagingConrtoller {
-	return &messagingConrtoller{hub: hub}
-}
-
-func (controller *messagingConrtoller) GetUpdates() http.Handler {
-	return nil
+func NewMessagingConrtoller(messagingService MessagingService) MessagingConrtoller {
+	return &messagingConrtoller{messagingService: messagingService}
 }
 
 func (controller *messagingConrtoller) GetRealtimeUpdates() http.Handler {
@@ -32,7 +27,15 @@ func (controller *messagingConrtoller) GetRealtimeUpdates() http.Handler {
 				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
 				return
 			}
-			serve(nickname, controller.hub, w, r)
+			cci := ClientConnectionInfo{
+				nickname: nickname,
+				offset: 0,
+			}
+			err := controller.messagingService.CreateClient(cci, w, r)
+			if err != nil {
+				helper.EncodeError(w, r, http.StatusInternalServerError, err)
+				return
+			}
 		},
 	)
 }

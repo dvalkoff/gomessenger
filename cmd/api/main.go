@@ -34,12 +34,15 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase)
 
 	chatRepository := chat.NewChatRepository(db)
-	hub := chat.NewHub(chatRepository)
+	messagingRepository := chat.NewMessagingRepository(db)
+	hub := chat.NewHub(chatRepository, messagingRepository)
 	go hub.Run()
 	createChatUseCase := chat.NewCreateChatUseCase(chatRepository, hub)
 	
 	chatController := chat.NewChatController(createChatUseCase)
-	messagingController := chat.NewMessagingConrtoller(hub)
+	
+	messagingService := chat.NewMessagingService(hub, messagingRepository)
+	messagingController := chat.NewMessagingConrtoller(messagingService)
 
 	httpConfig := config.HttpConfig{
 		Port: 8080,

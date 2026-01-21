@@ -22,7 +22,6 @@ func (useCase *findUsersUseCase) FindUsers(nicknameSubstring string) ([]UserInfo
 	if err != nil {
 		return nil, err
 	}
-	// TODO: rewrite to map
 	mappedUsers := make([]UserInfo, len(users))
 	for i, user := range users {
 		mappedUsers[i] = UserInfo{
