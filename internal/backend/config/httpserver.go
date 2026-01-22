@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/dvalkoff/gomessenger/internal/backend/middleware"
 )
 
 func SetUpAndRunServer(
 	config HttpConfig,
+	authProvider middleware.AuthenticationProvider,
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
@@ -18,6 +21,7 @@ func SetUpAndRunServer(
 	getRealtimeUpdates http.Handler,
 ) *http.Server {
 	handler := NewHandlers(
+		authProvider,
 		handleRegisterUser,
 		handleFindUsers,
 		handleCreateChat,
@@ -44,6 +48,7 @@ func SetUpAndRunServer(
 }
 
 func NewHandlers(
+	authProvider middleware.AuthenticationProvider,
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
@@ -52,35 +57,14 @@ func NewHandlers(
 	getRealtimeUpdates http.Handler,
 ) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(
-		mux,
-		handleRegisterUser,
-		handleFindUsers,
-		handleCreateChat,
-		addUserToChat,
-		getChats,
-		getRealtimeUpdates,
-	)
-	var handler http.Handler = mux
-	return handler
-}
 
-func addRoutes(
-	mux *http.ServeMux,
-	handleRegisterUser http.Handler,
-	handleFindUsers http.Handler,
-	handleCreateChat http.Handler,
-	addUserToChat http.Handler,
-	getChats http.Handler,
-	getRealtimeUpdates http.Handler,
-) {
-	mux.Handle("POST /signup", handleRegisterUser)
-	// mux.Handle("POST /signin", nil) // TODO
-	mux.Handle("GET /users/{nickname}", handleFindUsers)
+	mux.Handle("POST /signup", 					  handleRegisterUser)
+	mux.Handle("POST /signin", 					  authProvider.LogIn()) // TODO
+	mux.Handle("GET /users/{nickname}", 		  authProvider.AuthMiddleware(handleFindUsers))
 
-	mux.Handle("POST /users/{nickname}/chats", handleCreateChat)
-	mux.Handle("GET /users/{nickname}/chats", getChats)
-	mux.Handle("PATCH /users/{nickname}/chats/{chatId}/participants", addUserToChat)
-	
-	mux.Handle("GET /users/{nickname}/messaging", getRealtimeUpdates)
+	mux.Handle("POST /chats",    authProvider.AuthMiddleware(handleCreateChat))
+	mux.Handle("GET /chats", 	  authProvider.AuthMiddleware(getChats))
+	// mux.Handle("PATCH /users/{nickname}/chats/{chatId}/participants", addUserToChat) // TODO: fix {chatId}
+	mux.Handle("GET /messaging", authProvider.AuthMiddleware(getRealtimeUpdates))
+	return mux
 }

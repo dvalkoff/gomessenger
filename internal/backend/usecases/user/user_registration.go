@@ -1,6 +1,8 @@
 package user
 
 import (
+	"log/slog"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,12 +27,13 @@ func NewUserUserRegistrationUseCase(userRepository UserRepository) UserRegistrat
 func (useCase *userRegistrationUseCase) RegisterUser(userDto UserRegistrationInfo) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userDto.Password), bcrypt.DefaultCost)
 	if err != nil {
+		slog.Error("Failed to hash password", "error", err)
 		return err
 	}
 	row := UserRow{
-		nickname: userDto.Nickname,
-		name: userDto.Name,
-		hashedPassword: hashedPassword,
+		Nickname: userDto.Nickname,
+		Name: userDto.Name,
+		HashedPassword: hashedPassword,
 	}
-	return useCase.userRepository.saveUser(row)
+	return useCase.userRepository.SaveUser(row)
 }

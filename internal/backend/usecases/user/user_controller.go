@@ -10,7 +10,6 @@ import (
 
 type UserController interface {
 	RegisterUser() http.Handler
-	SignIn() http.Handler
 	FindUsers() http.Handler
 }
 
@@ -40,14 +39,6 @@ func (controller *userController) RegisterUser() http.Handler {
 				return
 			}
 			helper.EncodeNoBody(w, r, http.StatusOK)
-		},
-	)
-}
-
-func (controller *userController) SignIn() http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			// TODO
 		},
 	)
 }

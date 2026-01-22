@@ -1,7 +1,6 @@
 package messaging
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/dvalkoff/gomessenger/internal/backend/helper"
@@ -22,11 +21,7 @@ func NewMessagingConrtoller(messagingService MessagingService) MessagingConrtoll
 func (controller *messagingConrtoller) GetRealtimeUpdates() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := r.PathValue("nickname")
-			if len(nickname) == 0 {
-				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
-				return
-			}
+			nickname := helper.GetNickname(r.Context())
 			cci := ClientConnectionInfo{
 				nickname: nickname,
 				offset:   0,

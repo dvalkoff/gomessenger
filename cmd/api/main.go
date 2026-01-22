@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dvalkoff/gomessenger/internal/backend/config"
+	"github.com/dvalkoff/gomessenger/internal/backend/middleware"
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/chat"
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/messaging"
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/user"
@@ -20,6 +21,7 @@ import (
 
 const (
 	connectionStrEnv = "DB_CONNECTION_STR"
+	jwtSecretEnv = "JWT_SECRET"
 )
 
 func run(ctx context.Context, w io.Writer, args []string) error {
@@ -45,6 +47,8 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	messagingService := messaging.NewMessagingService(messagingHub, messagingRepository)
 	messagingController := messaging.NewMessagingConrtoller(messagingService)
 
+	authProvider := middleware.NewAuthenticationProvider(userRepository, os.Getenv(jwtSecretEnv))
+
 	go messagingHub.Run()
 
 	httpConfig := config.HttpConfig{
@@ -55,6 +59,7 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	}
 	server := config.SetUpAndRunServer(
 		httpConfig,
+		authProvider,
 		userController.RegisterUser(),
 		userController.FindUsers(),
 		chatController.CreateChat(),

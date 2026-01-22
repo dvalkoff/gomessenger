@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -26,11 +25,7 @@ func NewChatController(createChatUseCase CreateChatUseCase, chatSelection ChatSe
 func (controller *chatController) CreateChat() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := r.PathValue("nickname")
-			if len(nickname) == 0 {
-				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
-				return
-			}
+			nickname := helper.GetNickname(r.Context())
 			createChatInfo, err := helper.Decode[CreateChatInfo](r)
 			if err != nil {
 				helper.EncodeError(w, r, http.StatusInternalServerError, err)
@@ -53,11 +48,7 @@ func (controller *chatController) CreateChat() http.Handler {
 func (controller *chatController) GetChats() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := r.PathValue("nickname")
-			if len(nickname) == 0 {
-				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
-				return
-			}
+			nickname := helper.GetNickname(r.Context())
 			chats, err := controller.chatSelection.GetChats(nickname)
 			if err != nil {
 				helper.EncodeError(w, r, http.StatusInternalServerError, err)
@@ -74,11 +65,7 @@ func (controller *chatController) GetChats() http.Handler {
 func (controller *chatController) AddUserToChat() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := r.PathValue("nickname")
-			if len(nickname) == 0 {
-				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
-				return
-			}
+			nickname := helper.GetNickname(r.Context())
 			addUserToChatInfo, err := helper.Decode[AddUserToChatInfo](r)
 			if err != nil {
 				helper.EncodeError(w, r, http.StatusInternalServerError, err)

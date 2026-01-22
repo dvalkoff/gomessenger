@@ -3,14 +3,14 @@ package user
 import "database/sql"
 
 type UserRow struct {
-	nickname string
-	name string
-	hashedPassword []byte
+	Nickname string
+	Name string
+	HashedPassword []byte
 }
 
 type UserRepository interface {
-	saveUser(UserRow) error
-	findUsersByNickname(string) ([]UserRow, error)
+	SaveUser(UserRow) error
+	FindUsersByNickname(string) ([]UserRow, error)
 }
 
 type userRepository struct {
@@ -21,17 +21,17 @@ func NewUserRepository(db *sql.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
-func (repository *userRepository) saveUser(user UserRow) error {
+func (repository *userRepository) SaveUser(user UserRow) error {
 	sql := `
 	INSERT INTO messenger.users(nickname, name, password)
 	VALUES($1, $2, $3);`
-	_, err := repository.db.Exec(sql, user.nickname, user.name, user.hashedPassword)
+	_, err := repository.db.Exec(sql, user.Nickname, user.Name, user.HashedPassword)
 	return err
 }
 
-func (repository *userRepository) findUsersByNickname(nicknameSubstring string) ([]UserRow, error) {
+func (repository *userRepository) FindUsersByNickname(nicknameSubstring string) ([]UserRow, error) {
 	sql := `
-	SELECT name, nickname FROM messenger.users
+	SELECT name, nickname, password FROM messenger.users
 	WHERE nickname = $1;`
 	rows, err := repository.db.Query(sql, nicknameSubstring)
 	if err != nil {
@@ -42,7 +42,7 @@ func (repository *userRepository) findUsersByNickname(nicknameSubstring string) 
 	userRows := []UserRow{}
 	for rows.Next() {
 		userRow := UserRow{}
-		rows.Scan(&userRow.name, &userRow.nickname)
+		rows.Scan(&userRow.Name, &userRow.Nickname, &userRow.HashedPassword)
 		userRows = append(userRows, userRow)
 	}
 	if err := rows.Err(); err != nil { // TODO: when do I call Err()?

@@ -18,15 +18,15 @@ func NewFindUsersUseCase(userRepository UserRepository) FindUsersUseCase {
 }
 
 func (useCase *findUsersUseCase) FindUsers(nicknameSubstring string) ([]UserInfo, error) {
-	users, err := useCase.userRepository.findUsersByNickname(nicknameSubstring)
+	users, err := useCase.userRepository.FindUsersByNickname(nicknameSubstring)
 	if err != nil {
 		return nil, err
 	}
 	mappedUsers := make([]UserInfo, len(users))
 	for i, user := range users {
 		mappedUsers[i] = UserInfo{
-			Nickname: user.nickname,
-			Name: user.name,
+			Nickname: user.Nickname,
+			Name: user.Name,
 		}
 	}
 	return mappedUsers, nil
