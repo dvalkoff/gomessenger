@@ -1,4 +1,4 @@
-package chat
+package messaging
 
 import (
 	"log/slog"
@@ -15,13 +15,13 @@ type MessagingService interface {
 }
 
 type messagingService struct {
-	hub *Hub
+	messagingHub MessagingHub
 	messagingRepository MessagingRepository
 }
 
-func NewMessagingService(hub *Hub, messagingRepository MessagingRepository) MessagingService {
+func NewMessagingService(messaingHub MessagingHub, messagingRepository MessagingRepository) MessagingService {
 	return &messagingService{
-		hub: hub,
+		messagingHub: messaingHub,
 		messagingRepository: messagingRepository,
 	}
 }
@@ -37,9 +37,9 @@ func (service *messagingService) CreateClient(cci ClientConnectionInfo, w http.R
 		slog.Error("Failed to upgrate HTTP connection to Websockets", "error", err)
 		return err
 	}
-	client := &Client{
+	client := &MessagingClient{
 		nickname: cci.nickname,
-		hub: service.hub,
+		messagingHub: service.messagingHub,
 		conn: conn,
 		send: make(chan Message, 256),
 	}
@@ -50,7 +50,7 @@ func (service *messagingService) CreateClient(cci ClientConnectionInfo, w http.R
 	for _, messageRow := range messages {
 		message := Message{
 			Id: messageRow.id,
-			MessageType: "message",
+			EventType: "message",
 			ChatId: messageRow.chatId,
 			Sender: messageRow.sender,
 			Payload: messageRow.payload,
@@ -58,6 +58,6 @@ func (service *messagingService) CreateClient(cci ClientConnectionInfo, w http.R
 		}
 		client.send <- message
 	}
-	client.hub.registerClient <- client
+	client.messagingHub.RegisterClient(client)
 	return nil
 }

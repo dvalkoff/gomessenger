@@ -5,23 +5,24 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/dvalkoff/gomessenger/internal/helper"
+	"github.com/dvalkoff/gomessenger/internal/backend/helper"
 )
 
 type UserController interface {
 	RegisterUser() http.Handler
+	SignIn() http.Handler
 	FindUsers() http.Handler
 }
 
 type userController struct {
 	userRegistrationUseCase UserRegistrationUseCase
-	findUsersUseCase FindUsersUseCase
+	findUsersUseCase        FindUsersUseCase
 }
 
 func NewUserController(userRegistrationUseCase UserRegistrationUseCase, findUsersUseCase FindUsersUseCase) UserController {
 	return &userController{
 		userRegistrationUseCase: userRegistrationUseCase,
-		findUsersUseCase: findUsersUseCase,
+		findUsersUseCase:        findUsersUseCase,
 	}
 }
 
@@ -39,6 +40,14 @@ func (controller *userController) RegisterUser() http.Handler {
 				return
 			}
 			helper.EncodeNoBody(w, r, http.StatusOK)
+		},
+	)
+}
+
+func (controller *userController) SignIn() http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			// TODO
 		},
 	)
 }

@@ -5,15 +5,17 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
 
-	"github.com/dvalkoff/gomessenger/internal/config"
-	"github.com/dvalkoff/gomessenger/internal/usecases/chat"
-	"github.com/dvalkoff/gomessenger/internal/usecases/user"
+	"github.com/dvalkoff/gomessenger/internal/backend/config"
+	"github.com/dvalkoff/gomessenger/internal/backend/usecases/chat"
+	"github.com/dvalkoff/gomessenger/internal/backend/usecases/messaging"
+	"github.com/dvalkoff/gomessenger/internal/backend/usecases/user"
 )
 
 const (
@@ -34,28 +36,30 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase)
 
 	chatRepository := chat.NewChatRepository(db)
-	messagingRepository := chat.NewMessagingRepository(db)
-	hub := chat.NewHub(chatRepository, messagingRepository)
-	go hub.Run()
-	createChatUseCase := chat.NewCreateChatUseCase(chatRepository, hub)
-	
-	chatController := chat.NewChatController(createChatUseCase)
-	
-	messagingService := chat.NewMessagingService(hub, messagingRepository)
-	messagingController := chat.NewMessagingConrtoller(messagingService)
+	createChatUseCase := chat.NewCreateChatUseCase(chatRepository)
+	chatSelectionUseCase := chat.NewChatSelection(chatRepository)
+	chatController := chat.NewChatController(createChatUseCase, chatSelectionUseCase)
+
+	messagingRepository := messaging.NewMessagingRepository(db)
+	messagingHub := messaging.NewMessagingHub(chatRepository, messagingRepository)
+	messagingService := messaging.NewMessagingService(messagingHub, messagingRepository)
+	messagingController := messaging.NewMessagingConrtoller(messagingService)
+
+	go messagingHub.Run()
 
 	httpConfig := config.HttpConfig{
-		Port: 8080,
-		ReadTimeoutMs: 10000,
-		WriteTimeoutMs: 10000,
+		Port:               8080,
+		ReadTimeoutMs:      10000,
+		WriteTimeoutMs:     10000,
 		ShutdownTimeoutSec: 10,
 	}
-    server := config.SetUpAndRunServer(
+	server := config.SetUpAndRunServer(
 		httpConfig,
 		userController.RegisterUser(),
 		userController.FindUsers(),
 		chatController.CreateChat(),
 		chatController.AddUserToChat(),
+		chatController.GetChats(),
 		messagingController.GetRealtimeUpdates(),
 	)
 
@@ -64,29 +68,36 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 		ctx,
 		server,
 		db,
+		messagingHub,
 	)
 }
 
-func gracefulShutdown(timeout int, ctx context.Context, httpServer *http.Server, db *sql.DB) error {
+func gracefulShutdown(
+	timeout int,
+	ctx context.Context,
+	httpServer *http.Server,
+	db *sql.DB,
+	messagingHub messaging.MessagingHub) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
-    defer cancel()
+	defer cancel()
 
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		<-ctx.Done()
-		fmt.Fprintf(os.Stdout, "Shutting down server\n")
+		slog.Info("Shutting down server")
 		shutdownCtx := context.Background()
 		shutdownCtx, cancelShutdown := context.WithTimeout(
 			shutdownCtx,
-			time.Duration(timeout) * time.Second,
+			time.Duration(timeout)*time.Second,
 		)
 		defer cancelShutdown()
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			fmt.Fprintf(os.Stderr, "error shutting down http server: %s\n", err)
+			slog.Error("Error while shutting down http server", "error", err)
 		}
 		if err := db.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "error shutting down database connection pool: %s\n", err)
+			slog.Error("Error shutting down database connection pool", "error", err)
 		}
+		messagingHub.Shutdown()
 	})
 	wg.Wait()
 	return nil
@@ -94,10 +105,9 @@ func gracefulShutdown(timeout int, ctx context.Context, httpServer *http.Server,
 
 func main() {
 	// TODO: add shutdown on db connection loss
-    ctx := context.Background()
-    if err := run(ctx, os.Stdout, os.Args); err != nil {
-        fmt.Fprintf(os.Stderr, "%s\n", err)
-        os.Exit(1)
-    }
+	ctx := context.Background()
+	if err := run(ctx, os.Stdout, os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
 }
-

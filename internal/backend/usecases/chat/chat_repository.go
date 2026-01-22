@@ -19,9 +19,9 @@ type ChatRepository interface {
 	CreateChat(createChatInfo CreateChatInfo) (*ChatRow, error)
 	AddUsersToChat(chatId int, users []ChatUserRow) (error)
 	GetChat(chatId int) (*ChatRow, error)
-	GetChatIdsByUser(nickname string) ([]int, error)
 	GetNicknamesByChatId(chatId int) ([]string, error)
 	GetChatIds() ([]int, error)
+	GetChatsNoUsersByNickname(nickname string) ([]ChatRow, error)
 }
 
 type chatRepository struct {
@@ -131,25 +131,6 @@ func (repository *chatRepository) GetChat(chatId int) (*ChatRow, error) {
 	return &chat, nil
 }
 
-func (repository *chatRepository) GetChatIdsByUser(nickname string) ([]int, error) {
-	sql := `SELECT chat_id FROM messenger.chats_users WHERE user_nickname = $1`
-	rows, err := repository.db.Query(sql, nickname)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	chatIds := make([]int, 0)
-	for rows.Next() {
-		chatId := 0
-		rows.Scan(&chatId)
-		chatIds = append(chatIds, chatId)
-	}
-	if rows.Err() != nil {
-		return nil, err
-	}
-	return chatIds, nil
-}
-
 func (repository *chatRepository) GetNicknamesByChatId(chatId int) ([]string, error) {
 	sql := `SELECT user_nickname FROM messenger.chats_users WHERE chat_id = $1`
 	rows, err := repository.db.Query(sql, chatId)
@@ -186,4 +167,25 @@ func (repository *chatRepository) GetChatIds() ([]int, error) {
 		return nil, err
 	}
 	return chatIds, nil
+}
+
+func (repository *chatRepository) GetChatsNoUsersByNickname(nickname string) ([]ChatRow, error){
+	sql := `SELECT c.id, c.name FROM messenger.chats c
+			JOIN messenger.chats_users cu ON c.id = cu.chat_id
+			WHERE cu.user_nickname = $1`
+	rows, err := repository.db.Query(sql, nickname)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	chats := make([]ChatRow, 0)
+	for rows.Next() {
+		chatRow := ChatRow{}
+		rows.Scan(&chatRow.id, &chatRow.name)
+		chats = append(chats, chatRow)
+	}
+	if rows.Err() != nil {
+		return nil, err
+	}
+	return chats, nil
 }

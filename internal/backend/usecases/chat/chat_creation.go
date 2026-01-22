@@ -33,11 +33,10 @@ type CreateChatUseCase interface {
 
 type createChatUseCase struct {
 	chatRepository ChatRepository
-	messagingHub *Hub
 }
 
-func NewCreateChatUseCase(chatRepository ChatRepository, messagingHub *Hub) CreateChatUseCase {
-	return &createChatUseCase{chatRepository: chatRepository, messagingHub: messagingHub}
+func NewCreateChatUseCase(chatRepository ChatRepository) CreateChatUseCase {
+	return &createChatUseCase{chatRepository: chatRepository}
 }
 
 func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (*ChatInfo, error) {
@@ -45,8 +44,6 @@ func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (*Ch
 	if err != nil {
 		return nil, err
 	}
-
-	useCase.messagingHub.RegisterChat <- chat.id
 	return mapChatInfo(chat), nil
 }
 
@@ -68,9 +65,6 @@ func (useCase *createChatUseCase) AddUserToChat(user string, addUserToChatInfo A
 		return nil, err
 	}
 	chat.users = append(chat.users, chatUserRow)
-
-	useCase.messagingHub.UpdateClient<-addUserToChatInfo.Nickname
-
 	return mapChatInfo(chat), nil
 }
 

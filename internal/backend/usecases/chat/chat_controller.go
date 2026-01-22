@@ -5,20 +5,22 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/dvalkoff/gomessenger/internal/helper"
+	"github.com/dvalkoff/gomessenger/internal/backend/helper"
 )
 
 type ChatController interface {
 	CreateChat() http.Handler
+	GetChats() http.Handler
 	AddUserToChat() http.Handler
 }
 
 type chatController struct {
 	createChatUseCase CreateChatUseCase
+	chatSelection     ChatSelection
 }
 
-func NewChatController(createChatUseCase CreateChatUseCase) ChatController {
-	return &chatController{createChatUseCase: createChatUseCase}
+func NewChatController(createChatUseCase CreateChatUseCase, chatSelection ChatSelection) ChatController {
+	return &chatController{createChatUseCase: createChatUseCase, chatSelection: chatSelection}
 }
 
 func (controller *chatController) CreateChat() http.Handler {
@@ -42,6 +44,27 @@ func (controller *chatController) CreateChat() http.Handler {
 				return
 			}
 			if err = helper.Encode(w, r, http.StatusOK, createdChat); err != nil {
+				slog.Error("Failed to encode response", "error", err)
+			}
+		},
+	)
+}
+
+func (controller *chatController) GetChats() http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			nickname := r.PathValue("nickname")
+			if len(nickname) == 0 {
+				helper.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
+				return
+			}
+			chats, err := controller.chatSelection.GetChats(nickname)
+			if err != nil {
+				helper.EncodeError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			err = helper.Encode(w, r, http.StatusOK, chats)
+			if err != nil {
 				slog.Error("Failed to encode response", "error", err)
 			}
 		},

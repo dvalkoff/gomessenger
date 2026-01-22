@@ -1,10 +1,10 @@
-package chat
+package messaging
 
 import (
 	"fmt"
 	"net/http"
 
-	"github.com/dvalkoff/gomessenger/internal/helper"
+	"github.com/dvalkoff/gomessenger/internal/backend/helper"
 )
 
 type MessagingConrtoller interface {
@@ -29,7 +29,7 @@ func (controller *messagingConrtoller) GetRealtimeUpdates() http.Handler {
 			}
 			cci := ClientConnectionInfo{
 				nickname: nickname,
-				offset: 0,
+				offset:   0,
 			}
 			err := controller.messagingService.CreateClient(cci, w, r)
 			if err != nil {

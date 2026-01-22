@@ -14,6 +14,7 @@ func SetUpAndRunServer(
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
+	getChats http.Handler,
 	getRealtimeUpdates http.Handler,
 ) *http.Server {
 	handler := NewHandlers(
@@ -21,6 +22,7 @@ func SetUpAndRunServer(
 		handleFindUsers,
 		handleCreateChat,
 		addUserToChat,
+		getChats,
 		getRealtimeUpdates,
 	)
 	httpServer := &http.Server{
@@ -46,6 +48,7 @@ func NewHandlers(
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
+	getChats http.Handler,
 	getRealtimeUpdates http.Handler,
 ) http.Handler {
 	mux := http.NewServeMux()
@@ -55,6 +58,7 @@ func NewHandlers(
 		handleFindUsers,
 		handleCreateChat,
 		addUserToChat,
+		getChats,
 		getRealtimeUpdates,
 	)
 	var handler http.Handler = mux
@@ -67,13 +71,16 @@ func addRoutes(
 	handleFindUsers http.Handler,
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
+	getChats http.Handler,
 	getRealtimeUpdates http.Handler,
 ) {
-	mux.Handle("POST /users", handleRegisterUser)
+	mux.Handle("POST /signup", handleRegisterUser)
+	// mux.Handle("POST /signin", nil) // TODO
 	mux.Handle("GET /users/{nickname}", handleFindUsers)
 
 	mux.Handle("POST /users/{nickname}/chats", handleCreateChat)
-	mux.Handle("PATCH /users/{nickname}/chats/participants", addUserToChat)
+	mux.Handle("GET /users/{nickname}/chats", getChats)
+	mux.Handle("PATCH /users/{nickname}/chats/{chatId}/participants", addUserToChat)
 	
 	mux.Handle("GET /users/{nickname}/messaging", getRealtimeUpdates)
 }

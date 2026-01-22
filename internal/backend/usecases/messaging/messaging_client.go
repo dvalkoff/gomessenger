@@ -1,4 +1,4 @@
-package chat
+package messaging
 
 import (
 	"encoding/json"
@@ -30,23 +30,23 @@ var upgrader = websocket.Upgrader{
 
 type Message struct {
 	Id int `json:"id"`
-	MessageType string `json:"messageType"`
+	EventType string `json:"eventType"`
 	ChatId int `json:"chatId"`
 	Sender string `json:"sender"`
 	Payload string `json:"payload"`
 	SentAt time.Time `json:"sentAt"`
 }
 
-type Client struct {
+type MessagingClient struct {
 	nickname string
-	hub *Hub
+	messagingHub MessagingHub
 	conn *websocket.Conn
 	send chan Message
 }
 
-func (c *Client) sendMessage() {
+func (c *MessagingClient) sendMessage() {
 	defer func() {
-		c.hub.unregisterClient <- c
+		c.messagingHub.UnregisterClient(c)
 		c.conn.Close()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
@@ -72,11 +72,11 @@ func (c *Client) sendMessage() {
 		message.Sender = c.nickname
 		message.SentAt = time.Now()
 		message.Payload = strings.TrimSpace(message.Payload)
-		c.hub.chats[message.ChatId].messages <- message // TODO: remove map access, replace with channels
+		c.messagingHub.SendMessage(message)
 	}
 }
 
-func (c *Client) readMessages() {
+func (c *MessagingClient) readMessages() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
