@@ -1,4 +1,4 @@
-package helper
+package utils
 
 import (
 	"context"
@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	UserContextKey = "user"
-	UserNicknameKey = "nickname"
+	UserContextKey  = "user"
+	UserNicknameKey = "sub"
+	ExpirationTime  = "exp"
 )
 
 func GetNickname(ctx context.Context) string {

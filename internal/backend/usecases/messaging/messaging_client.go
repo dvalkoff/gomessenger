@@ -3,6 +3,7 @@ package messaging
 import (
 	"encoding/json"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
@@ -26,6 +27,9 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool { // TODO
+		return true
+	},
 }
 
 type Message struct {

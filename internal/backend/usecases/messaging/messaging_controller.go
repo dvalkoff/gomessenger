@@ -3,7 +3,7 @@ package messaging
 import (
 	"net/http"
 
-	"github.com/dvalkoff/gomessenger/internal/backend/helper"
+	"github.com/dvalkoff/gomessenger/internal/backend/utils"
 )
 
 type MessagingConrtoller interface {
@@ -21,14 +21,14 @@ func NewMessagingConrtoller(messagingService MessagingService) MessagingConrtoll
 func (controller *messagingConrtoller) GetRealtimeUpdates() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := helper.GetNickname(r.Context())
+			nickname := utils.GetNickname(r.Context())
 			cci := ClientConnectionInfo{
 				nickname: nickname,
 				offset:   0,
 			}
 			err := controller.messagingService.CreateClient(cci, w, r)
 			if err != nil {
-				helper.EncodeError(w, r, http.StatusInternalServerError, err)
+				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
 			}
 		},

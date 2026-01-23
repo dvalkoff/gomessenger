@@ -15,4 +15,5 @@
     <include file="2-create-users.sql" relativeToChangelogFile="true"/>
     <include file="3-create-chats.sql" relativeToChangelogFile="true"/>
     <include file="4-create-messages.sql" relativeToChangelogFile="true"/>
+    <include file="5-create-friends.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

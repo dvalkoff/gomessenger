@@ -22,6 +22,7 @@ import (
 const (
 	connectionStrEnv = "DB_CONNECTION_STR"
 	jwtSecretEnv = "JWT_SECRET"
+	frontendUrl = "FRONTEND_URL"
 )
 
 func run(ctx context.Context, w io.Writer, args []string) error {
@@ -35,7 +36,8 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	userRepository := user.NewUserRepository(db)
 	userRegistrationUseCase := user.NewUserUserRegistrationUseCase(userRepository)
 	findUsersUseCase := user.NewFindUsersUseCase(userRepository)
-	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase)
+	friendsService := user.NewFriendsService(userRepository)
+	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase, friendsService)
 
 	chatRepository := chat.NewChatRepository(db)
 	createChatUseCase := chat.NewCreateChatUseCase(chatRepository)
@@ -48,6 +50,7 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	messagingController := messaging.NewMessagingConrtoller(messagingService)
 
 	authProvider := middleware.NewAuthenticationProvider(userRepository, os.Getenv(jwtSecretEnv))
+	corsProvider := middleware.NewCorsMiddleware(os.Getenv(frontendUrl))
 
 	go messagingHub.Run()
 
@@ -59,9 +62,12 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	}
 	server := config.SetUpAndRunServer(
 		httpConfig,
+		corsProvider,
 		authProvider,
 		userController.RegisterUser(),
 		userController.FindUsers(),
+		userController.AddFriend(),
+		userController.GetFriends(),
 		chatController.CreateChat(),
 		chatController.AddUserToChat(),
 		chatController.GetChats(),

@@ -51,3 +51,5 @@ services:
   #   environment:
   #     DB_CONNECTION_STR: postgres://messenger_app:password@db:5432/messenger?sslmode=disable
   #     JWT_SECRET: aboba
+  #     FRONTEND_URL: http://localhost:5173
+
