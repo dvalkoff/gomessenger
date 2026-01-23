@@ -16,7 +16,7 @@ type MessagingHub interface {
 }
 
 type messagingHub struct {
-	clients map[string]*MessagingClient
+	clients map[string][]*MessagingClient
 
 	registerClientChan   chan *MessagingClient
 	unregisterClientChan chan *MessagingClient
@@ -30,7 +30,7 @@ type messagingHub struct {
 
 func NewMessagingHub(chatRepository chat.ChatRepository, messagingRepository MessagingRepository) MessagingHub {
 	return &messagingHub{
-		clients: make(map[string]*MessagingClient),
+		clients: make(map[string][]*MessagingClient),
 
 		registerClientChan:   make(chan *MessagingClient),
 		unregisterClientChan: make(chan *MessagingClient),
@@ -75,12 +75,25 @@ func (h *messagingHub) Shutdown() {
 }
 
 func (h *messagingHub) processRegisterClient(client *MessagingClient) {
-	h.clients[client.nickname] = client
+	h.clients[client.nickname] = append(h.clients[client.nickname], client)
 }
 
 func (h *messagingHub) processUnregisterClient(client *MessagingClient) {
+	if len(h.clients[client.nickname]) <= 1 {
+		delete(h.clients, client.nickname)
+	} else {
+		oldSlice := h.clients[client.nickname]
+		clientIdx := 0
+		for i, cl := range oldSlice {
+			if cl == client {
+				clientIdx = i
+			}
+		}
+		newSlice := make([]*MessagingClient, 0)
+		newSlice = append(newSlice, oldSlice[:clientIdx]...)
+		h.clients[client.nickname] = append(newSlice, oldSlice[clientIdx+1:]...)
+	}
 	close(client.send)
-	delete(h.clients, client.nickname)
 }
 
 func (h *messagingHub) processSendMessage(message Message) {
@@ -107,19 +120,23 @@ func (h *messagingHub) processSendMessage(message Message) {
 	message.Id = row.id
 
 	for _, nickname := range nicknames {
-		if client, ok := h.clients[nickname]; ok {
-			select {
-			case client.send <- message:
-			default:
-				slog.Warn("Failed to send message to a client", "chat", message.ChatId, "nickname", client.nickname)
+		if clients, ok := h.clients[nickname]; ok {
+			for _, client := range clients {
+				select {
+				case client.send <- message:
+				default:
+					slog.Warn("Failed to send message to a client", "chat", message.ChatId, "nickname", client.nickname)
+				}
 			}
 		}
 	}
 }
 
 func (h *messagingHub) processShutdown() {
-	for _, client := range h.clients {
-		h.processUnregisterClient(client)
+	for _, clients := range h.clients {
+		for _, client := range clients {
+			h.processUnregisterClient(client)
+		}
 	}
 	slog.Info("Messaging hub was successfuly shut down")
 }
