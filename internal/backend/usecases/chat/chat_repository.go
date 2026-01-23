@@ -16,9 +16,9 @@ type ChatUserRow struct {
 }
 
 type ChatRepository interface {
-	CreateChat(createChatInfo CreateChatInfo) (*ChatRow, error)
+	CreateChat(createChatInfo ChatRow) (ChatRow, error)
 	AddUsersToChat(chatId int, users []ChatUserRow) (error)
-	GetChat(chatId int) (*ChatRow, error)
+	GetChat(chatId int) (ChatRow, error)
 	GetNicknamesByChatId(chatId int) ([]string, error)
 	GetChatIds() ([]int, error)
 	GetChatsNoUsersByNickname(nickname string) ([]ChatRow, error)
@@ -33,44 +33,31 @@ func NewChatRepository(db *sql.DB) ChatRepository {
 	return &chatRepository{db: db}
 }
 
-func (repository *chatRepository) CreateChat(createChatInfo CreateChatInfo) (*ChatRow, error) {
+func (repository *chatRepository) CreateChat(createChatInfo ChatRow) (ChatRow, error) {
 	tx, err := repository.db.Begin()
 	if err != nil {
-		return nil, err
+		return ChatRow{}, err
 	}
 	defer tx.Commit()
 
-	chatId, err := repository.insertChatAndGetId(tx, createChatInfo.Name)
+	err = repository.insertChatAndGetId(tx, &createChatInfo)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
-	}
-	usersToAdd := make([]ChatUserRow, 0, len(createChatInfo.Users) + 1)
-	usersToAdd = append(usersToAdd, ChatUserRow{createChatInfo.CreatorNickname, "admin"})
-	for _, userToAdd := range createChatInfo.Users {
-		usersToAdd = append(usersToAdd, ChatUserRow{userToAdd, "user"})
+		return ChatRow{}, err
 	}
 
-	err = repository.addUsersToChatInTx(tx, chatId, usersToAdd)
+	err = repository.addUsersToChatInTx(tx, createChatInfo.id, createChatInfo.users)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return ChatRow{}, err
 	}
-	return &ChatRow{
-		id: int(chatId),
-		name: createChatInfo.Name,
-		users: usersToAdd,
-	}, nil
+	return createChatInfo, nil
 }
 
-func (repository *chatRepository) insertChatAndGetId(tx *sql.Tx, name string) (int, error) {
+func (repository *chatRepository) insertChatAndGetId(tx *sql.Tx, chat *ChatRow) error {
 	sql := `INSERT INTO messenger.chats(name) VALUES ($1) RETURNING id`
-	var chatId int
-	err := tx.QueryRow(sql, name).Scan(&chatId)
-	if err != nil {
-		return 0, err
-	}
-	return chatId, nil
+	err := tx.QueryRow(sql, chat.name).Scan(&chat.id)
+	return err
 }
 
 func (repository *chatRepository) AddUsersToChat(chatId int, users []ChatUserRow) error {
@@ -102,33 +89,29 @@ func (repository *chatRepository) addUsersToChatInTx(tx *sql.Tx, chatId int, use
 	return nil
 }
 
-func (repository *chatRepository) GetChat(chatId int) (*ChatRow, error) {
+func (repository *chatRepository) GetChat(chatId int) (ChatRow, error) {
 	getChatSql := `SELECT id, name FROM messenger.chats WHERE id = $1`
 	chat := ChatRow{}
 	err := repository.db.QueryRow(getChatSql, chatId).Scan(&chat.id, &chat.name)
 	if err != nil {
-		return nil, err
+		return ChatRow{}, err
 	}
 	getChatUsersSql := `SELECT user_nickname, role FROM messenger.chats_users WHERE chat_id = $1`
 	rows, err := repository.db.Query(getChatUsersSql, chatId)
 	if err != nil {
-		return nil, err
+		return ChatRow{}, err
 	}
-	defer rows.Close()
 	users := []ChatUserRow{}
 	for rows.Next() {
 		user := ChatUserRow{}
-		err := rows.Scan(&user.nickname, &user.role)
-		if err != nil {
-			return nil, err
-		}
+		rows.Scan(&user.nickname, &user.role)
 		users = append(users, user)
 	}
 	chat.users = users
 	if rows.Err() != nil {
-		return nil, err
+		return ChatRow{}, err
 	}
-	return &chat, nil
+	return chat, nil
 }
 
 func (repository *chatRepository) GetNicknamesByChatId(chatId int) ([]string, error) {
@@ -137,7 +120,6 @@ func (repository *chatRepository) GetNicknamesByChatId(chatId int) ([]string, er
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	nicknames := make([]string, 0)
 	for rows.Next() {
 		var nickname string
@@ -156,7 +138,6 @@ func (repository *chatRepository) GetChatIds() ([]int, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	chatIds := make([]int, 0)
 	for rows.Next() {
 		chatId := 0
@@ -177,7 +158,6 @@ func (repository *chatRepository) GetChatsNoUsersByNickname(nickname string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	chats := make([]ChatRow, 0)
 	for rows.Next() {
 		chatRow := ChatRow{}

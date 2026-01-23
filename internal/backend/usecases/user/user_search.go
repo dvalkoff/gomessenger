@@ -1,10 +1,5 @@
 package user
 
-type UserInfo struct {
-	Nickname string `json:"nickname"`
-	Name string `json:"name"`
-}
-
 type FindUsersUseCase interface {
 	FindUsers(string) ([]UserInfo, error)
 }

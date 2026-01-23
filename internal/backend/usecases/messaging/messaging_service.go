@@ -5,11 +5,6 @@ import (
 	"net/http"
 )
 
-type ClientConnectionInfo struct {
-	nickname string
-	offset int
-}
-
 type MessagingService interface {
 	CreateClient(cci ClientConnectionInfo, w http.ResponseWriter, r *http.Request) error
 }

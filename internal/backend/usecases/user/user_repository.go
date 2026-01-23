@@ -39,7 +39,6 @@ func (repository *userRepository) FindUsersByNickname(nicknameSubstring string) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close() // TODO: should I call Close()? what should I do with err that Close() returns?
 	
 	userRows := []UserRow{}
 	for rows.Next() {
@@ -47,7 +46,7 @@ func (repository *userRepository) FindUsersByNickname(nicknameSubstring string) 
 		rows.Scan(&userRow.Name, &userRow.Nickname, &userRow.HashedPassword)
 		userRows = append(userRows, userRow)
 	}
-	if err := rows.Err(); err != nil { // TODO: when do I call Err()?
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return userRows, nil
@@ -69,7 +68,6 @@ func (repository *userRepository) GetFriends(nickname string) ([]UserRow, error)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close() // TODO: should I call Close()? what should I do with err that Close() returns?
 	
 	userRows := []UserRow{}
 	for rows.Next() {
@@ -77,7 +75,7 @@ func (repository *userRepository) GetFriends(nickname string) ([]UserRow, error)
 		rows.Scan(&userRow.Name, &userRow.Nickname)
 		userRows = append(userRows, userRow)
 	}
-	if err := rows.Err(); err != nil { // TODO: when do I call Err()?
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return userRows, nil

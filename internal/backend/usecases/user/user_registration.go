@@ -6,11 +6,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserRegistrationInfo struct {
-	Nickname string `json:"nickname"`
-	Name string `json:"name"`
-	Password string `json:"password"`
-}
 
 type UserRegistrationUseCase interface{
 	RegisterUser(UserRegistrationInfo) error

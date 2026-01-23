@@ -15,7 +15,7 @@ type MessageRow struct {
 
 type MessagingRepository interface {
 	GetMessages(nickname string, offset int) ([]MessageRow, error)
-	SaveMessage(message Message) (MessageRow, error)
+	SaveMessage(message MessageRow) (MessageRow, error)
 }
 
 type messagingRepository struct {
@@ -26,23 +26,16 @@ func NewMessagingRepository(db *sql.DB) MessagingRepository {
 	return &messagingRepository{db: db}
 }
 
-func (repository *messagingRepository) SaveMessage(message Message) (MessageRow, error) {
+func (repository *messagingRepository) SaveMessage(message MessageRow) (MessageRow, error) {
 	sql := `INSERT INTO messenger.messages(payload, sender, chat_id, sent_at)
 	VALUES($1, $2, $3, $4) RETURNING id`
-	id := 0
 	err := repository.db.
-		QueryRow(sql, message.Payload, message.Sender, message.ChatId, message.SentAt).
-		Scan(&id)
+		QueryRow(sql, message.payload, message.sender, message.chatId, message.sentAt).
+		Scan(&message.id)
 	if err != nil {
 		return MessageRow{}, err
 	}
-	return MessageRow{
-		id: id,
-		payload: message.Payload,
-		sender: message.Sender,
-		chatId: message.ChatId,
-		sentAt: message.SentAt,
-	}, nil
+	return message, nil
 }
 
 func (repository *messagingRepository) GetMessages(nickname string, offset int) ([]MessageRow, error) {

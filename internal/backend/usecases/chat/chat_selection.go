@@ -2,11 +2,6 @@ package chat
 
 import "log/slog"
 
-type ChatInfoNoUsers struct {
-	Id int `json:"id"`
-	Name string `json:"name"`
-}
-
 type ChatSelection interface {
 	GetChats(nickname string) ([]ChatInfoNoUsers, error)
 }

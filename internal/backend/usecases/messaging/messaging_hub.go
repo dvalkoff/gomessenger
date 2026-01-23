@@ -94,7 +94,12 @@ func (h *messagingHub) processSendMessage(message Message) {
 		return
 	}
 
-	row, err := h.messagingRepository.SaveMessage(message)
+	row, err := h.messagingRepository.SaveMessage(MessageRow{
+		payload: message.Payload,
+		sender: message.Sender,
+		chatId: message.ChatId,
+		sentAt: message.SentAt,
+	})
 	if err != nil {
 		slog.Error("Failed to save message", "error", err)
 		return
