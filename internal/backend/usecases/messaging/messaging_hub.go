@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"context"
 	"log/slog"
 	"slices"
 
@@ -12,7 +13,7 @@ type MessagingHub interface {
 	RegisterClient(client *MessagingClient)
 	UnregisterClient(client *MessagingClient)
 	SendMessage(message Message)
-	Shutdown()
+	Shutdown() <-chan struct{}
 }
 
 type messagingHub struct {
@@ -22,13 +23,16 @@ type messagingHub struct {
 	unregisterClientChan chan *MessagingClient
 
 	messagesChan chan Message
-	shutdownChan chan struct{}
+	shutdownCompletedChan chan struct{}
+	shutdownCtx context.Context
+	shutdownFunc context.CancelFunc
 
 	chatRepository      chat.ChatRepository
 	messagingRepository MessagingRepository
 }
 
 func NewMessagingHub(chatRepository chat.ChatRepository, messagingRepository MessagingRepository) MessagingHub {
+	shutdownCtx, cancel := context.WithCancel(context.Background())
 	return &messagingHub{
 		clients: make(map[string][]*MessagingClient),
 
@@ -36,7 +40,10 @@ func NewMessagingHub(chatRepository chat.ChatRepository, messagingRepository Mes
 		unregisterClientChan: make(chan *MessagingClient),
 
 		messagesChan: make(chan Message),
-		shutdownChan: make(chan struct{}),
+
+		shutdownCompletedChan: make(chan struct{}),
+		shutdownCtx: shutdownCtx,
+		shutdownFunc: cancel,
 
 		chatRepository:      chatRepository,
 		messagingRepository: messagingRepository,
@@ -52,8 +59,9 @@ func (h *messagingHub) Run() {
 			h.processUnregisterClient(client)
 		case message := <-h.messagesChan:
 			h.processSendMessage(message)
-		case <-h.shutdownChan:
+		case <-h.shutdownCtx.Done():
 			h.processShutdown()
+			return
 		}
 	}
 }
@@ -70,8 +78,9 @@ func (h *messagingHub) SendMessage(message Message) {
 	h.messagesChan <- message
 }
 
-func (h *messagingHub) Shutdown() {
-	h.shutdownChan <- struct{}{}
+func (h *messagingHub) Shutdown() <-chan struct{} {
+	h.shutdownFunc()
+	return h.shutdownCompletedChan
 }
 
 func (h *messagingHub) processRegisterClient(client *MessagingClient) {
@@ -139,4 +148,5 @@ func (h *messagingHub) processShutdown() {
 		}
 	}
 	slog.Info("Messaging hub was successfuly shut down")
+	close(h.shutdownCompletedChan)
 }

@@ -108,7 +108,9 @@ func gracefulShutdown(
 		if err := db.Close(); err != nil {
 			slog.Error("Error shutting down database connection pool", "error", err)
 		}
-		messagingHub.Shutdown()
+
+		hubShutdownChan := messagingHub.Shutdown()
+		<-hubShutdownChan
 	})
 	wg.Wait()
 	return nil
