@@ -20,7 +20,7 @@ const (
 
 	PostgreSQLConnectionString = "POSTGRESQL_CONNECTION_STRING"
 
-	GracefulShutdownTimeoutSec = "GRACEFUL_SHUTDOWN_TIMOUT_SEC"
+	GracefulShutdownTimeoutSec = "GRACEFUL_SHUTDOWN_TIMEOUT_SEC"
 
 )
 
