@@ -23,7 +23,7 @@ func (cs *chatSelection) GetChats(nickname string) ([]ChatInfoNoUsers, error) {
 	chats := make([]ChatInfoNoUsers, len(chatRows))
 	for i, chatRow := range chatRows {
 		chats[i] = ChatInfoNoUsers{
-			Id: chatRow.id,
+			Id:   chatRow.id,
 			Name: chatRow.name,
 		}
 	}

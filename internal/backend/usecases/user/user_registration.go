@@ -6,8 +6,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
-type UserRegistrationUseCase interface{
+type UserRegistrationUseCase interface {
 	RegisterUser(UserRegistrationInfo) error
 }
 
@@ -26,8 +25,8 @@ func (useCase *userRegistrationUseCase) RegisterUser(userDto UserRegistrationInf
 		return err
 	}
 	row := UserRow{
-		Nickname: userDto.Nickname,
-		Name: userDto.Name,
+		Nickname:       userDto.Nickname,
+		Name:           userDto.Name,
 		HashedPassword: hashedPassword,
 	}
 	return useCase.userRepository.SaveUser(row)

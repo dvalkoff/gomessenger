@@ -33,19 +33,19 @@ var upgrader = websocket.Upgrader{
 }
 
 type Message struct {
-	Id int `json:"id"`
-	EventType string `json:"eventType"`
-	ChatId int `json:"chatId"`
-	Sender string `json:"sender"`
-	Payload string `json:"payload"`
-	SentAt time.Time `json:"sentAt"`
+	Id        int       `json:"id"`
+	EventType string    `json:"eventType"`
+	ChatId    int       `json:"chatId"`
+	Sender    string    `json:"sender"`
+	Payload   string    `json:"payload"`
+	SentAt    time.Time `json:"sentAt"`
 }
 
 type MessagingClient struct {
-	nickname string
+	nickname     string
 	messagingHub MessagingHub
-	conn *websocket.Conn
-	send chan Message
+	conn         *websocket.Conn
+	send         chan Message
 }
 
 func (c *MessagingClient) sendMessage() {

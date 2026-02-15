@@ -22,10 +22,10 @@ type messagingHub struct {
 	registerClientChan   chan *MessagingClient
 	unregisterClientChan chan *MessagingClient
 
-	messagesChan chan Message
+	messagesChan          chan Message
 	shutdownCompletedChan chan struct{}
-	shutdownCtx context.Context
-	shutdownFunc context.CancelFunc
+	shutdownCtx           context.Context
+	shutdownFunc          context.CancelFunc
 
 	chatRepository      chat.ChatRepository
 	messagingRepository MessagingRepository
@@ -42,8 +42,8 @@ func NewMessagingHub(chatRepository chat.ChatRepository, messagingRepository Mes
 		messagesChan: make(chan Message),
 
 		shutdownCompletedChan: make(chan struct{}),
-		shutdownCtx: shutdownCtx,
-		shutdownFunc: cancel,
+		shutdownCtx:           shutdownCtx,
+		shutdownFunc:          cancel,
 
 		chatRepository:      chatRepository,
 		messagingRepository: messagingRepository,
@@ -118,9 +118,9 @@ func (h *messagingHub) processSendMessage(message Message) {
 
 	row, err := h.messagingRepository.SaveMessage(MessageRow{
 		payload: message.Payload,
-		sender: message.Sender,
-		chatId: message.ChatId,
-		sentAt: message.SentAt,
+		sender:  message.Sender,
+		chatId:  message.ChatId,
+		sentAt:  message.SentAt,
 	})
 	if err != nil {
 		slog.Error("Failed to save message", "error", err)

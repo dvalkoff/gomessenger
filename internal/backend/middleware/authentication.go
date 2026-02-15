@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dvalkoff/gomessenger/internal/backend/utils"
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/user"
+	"github.com/dvalkoff/gomessenger/internal/backend/utils"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	accessTokenExpirationTimeSeconds  = 60 * 60 * 24 * 30
+	accessTokenExpirationTimeSeconds = 60 * 60 * 24 * 30
 )
 
 type UserAuthenticationInfo struct {
@@ -120,7 +120,6 @@ func (authProvider *authenticationProvider) authMiddleware(next http.Handler, to
 					return authProvider.signingJwtSecret, nil
 				},
 			)
-
 			if err != nil || !token.Valid || isTokenExpired(token) {
 				utils.EncodeError(w, r, http.StatusUnauthorized, fmt.Errorf("Invalid token"))
 				return

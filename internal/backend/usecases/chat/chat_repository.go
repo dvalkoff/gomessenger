@@ -5,19 +5,19 @@ import (
 )
 
 type ChatRow struct {
-	id int
-	name string
+	id    int
+	name  string
 	users []ChatUserRow
 }
 
 type ChatUserRow struct {
 	nickname string
-	role string
+	role     string
 }
 
 type ChatRepository interface {
 	CreateChat(createChatInfo ChatRow) (ChatRow, error)
-	AddUsersToChat(chatId int, users []ChatUserRow) (error)
+	AddUsersToChat(chatId int, users []ChatUserRow) error
 	GetChat(chatId int) (ChatRow, error)
 	GetNicknamesByChatId(chatId int) ([]string, error)
 	GetChatIds() ([]int, error)
@@ -27,6 +27,7 @@ type ChatRepository interface {
 type chatRepository struct {
 	db *sql.DB
 }
+
 // https://blog.thibaut-rousseau.com/blog/sql-transactions-in-go-the-good-way/
 
 func NewChatRepository(db *sql.DB) ChatRepository {
@@ -150,7 +151,7 @@ func (repository *chatRepository) GetChatIds() ([]int, error) {
 	return chatIds, nil
 }
 
-func (repository *chatRepository) GetChatsNoUsersByNickname(nickname string) ([]ChatRow, error){
+func (repository *chatRepository) GetChatsNoUsersByNickname(nickname string) ([]ChatRow, error) {
 	sql := `SELECT c.id, c.name FROM messenger.chats c
 			JOIN messenger.chats_users cu ON c.id = cu.chat_id
 			WHERE cu.user_nickname = $1`

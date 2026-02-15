@@ -21,7 +21,7 @@ func (useCase *findUsersUseCase) FindUsers(nicknameSubstring string) ([]UserInfo
 	for i, user := range users {
 		mappedUsers[i] = UserInfo{
 			Nickname: user.Nickname,
-			Name: user.Name,
+			Name:     user.Name,
 		}
 	}
 	return mappedUsers, nil

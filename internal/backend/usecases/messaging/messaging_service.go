@@ -10,13 +10,13 @@ type MessagingService interface {
 }
 
 type messagingService struct {
-	messagingHub MessagingHub
+	messagingHub        MessagingHub
 	messagingRepository MessagingRepository
 }
 
 func NewMessagingService(messaingHub MessagingHub, messagingRepository MessagingRepository) MessagingService {
 	return &messagingService{
-		messagingHub: messaingHub,
+		messagingHub:        messaingHub,
 		messagingRepository: messagingRepository,
 	}
 }
@@ -33,10 +33,10 @@ func (service *messagingService) CreateClient(cci ClientConnectionInfo, w http.R
 		return err
 	}
 	client := &MessagingClient{
-		nickname: cci.nickname,
+		nickname:     cci.nickname,
 		messagingHub: service.messagingHub,
-		conn: conn,
-		send: make(chan Message, 256),
+		conn:         conn,
+		send:         make(chan Message, 256),
 	}
 
 	go client.readMessages()
@@ -44,12 +44,12 @@ func (service *messagingService) CreateClient(cci ClientConnectionInfo, w http.R
 
 	for _, messageRow := range messages {
 		message := Message{
-			Id: messageRow.id,
+			Id:        messageRow.id,
 			EventType: "message",
-			ChatId: messageRow.chatId,
-			Sender: messageRow.sender,
-			Payload: messageRow.payload,
-			SentAt: messageRow.sentAt,
+			ChatId:    messageRow.chatId,
+			Sender:    messageRow.sender,
+			Payload:   messageRow.payload,
+			SentAt:    messageRow.sentAt,
 		}
 		client.send <- message
 	}

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -19,17 +18,16 @@ import (
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/user"
 )
 
-const (
-	connectionStrEnv = "DB_CONNECTION_STR"
-	jwtSecretEnv = "JWT_SECRET"
-	frontendUrl = "FRONTEND_URL"
-)
-
 func run(ctx context.Context, w io.Writer, args []string) error {
-	dbConfig := config.DbConfig{
-		ConnectionStr: os.Getenv(connectionStrEnv),
+	appConfig, err := config.MakeAppConfig()
+	if err != nil {
+		return err
 	}
-	db, err := config.NewDb(dbConfig)
+	err = middleware.InitLogger(w, appConfig.LoggingConfig)
+	if err != nil {
+		return err
+	}
+	db, err := config.NewDB(appConfig.DbConfig)
 	if err != nil {
 		return err
 	}
@@ -49,21 +47,17 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	messagingService := messaging.NewMessagingService(messagingHub, messagingRepository)
 	messagingController := messaging.NewMessagingConrtoller(messagingService)
 
-	authProvider := middleware.NewAuthenticationProvider(userRepository, os.Getenv(jwtSecretEnv))
-	corsProvider := middleware.NewCorsMiddleware(os.Getenv(frontendUrl))
+	authProvider := middleware.NewAuthenticationProvider(userRepository, appConfig.HttpConfig.JwtSecret)
+	corsProvider := middleware.NewCorsMiddleware(appConfig.HttpConfig.CorsAllowedURL)
 
 	go messagingHub.Run()
 
-	httpConfig := config.HttpConfig{
-		Port:               8080,
-		ReadTimeoutMs:      10000,
-		WriteTimeoutMs:     10000,
-		ShutdownTimeoutSec: 10,
-	}
 	server := config.SetUpAndRunServer(
-		httpConfig,
-		corsProvider,
-		authProvider,
+		appConfig.HttpConfig,
+		config.MiddlewareFunc(corsProvider.HandleCors),
+		config.MiddlewareFunc(authProvider.AuthMiddleware),
+		config.MiddlewareFunc(authProvider.AuthWsMiddleware),
+		authProvider.LogIn(),
 		userController.RegisterUser(),
 		userController.FindUsers(),
 		userController.AddFriend(),
@@ -75,7 +69,7 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 	)
 
 	return gracefulShutdown(
-		httpConfig.ShutdownTimeoutSec,
+		appConfig.GracefulShutdownConfig,
 		ctx,
 		server,
 		db,
@@ -84,11 +78,12 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 }
 
 func gracefulShutdown(
-	timeout int,
+	config config.GracefulShutdownConfig,
 	ctx context.Context,
 	httpServer *http.Server,
 	db *sql.DB,
-	messagingHub messaging.MessagingHub) error {
+	messagingHub messaging.MessagingHub,
+) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
@@ -99,18 +94,23 @@ func gracefulShutdown(
 		shutdownCtx := context.Background()
 		shutdownCtx, cancelShutdown := context.WithTimeout(
 			shutdownCtx,
-			time.Duration(timeout)*time.Second,
+			time.Duration(config.ShutdownTimeoutSec) * time.Second,
 		)
 		defer cancelShutdown()
+
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
 			slog.Error("Error while shutting down http server", "error", err)
 		}
+
 		if err := db.Close(); err != nil {
 			slog.Error("Error shutting down database connection pool", "error", err)
 		}
 
-		hubShutdownChan := messagingHub.Shutdown()
-		<-hubShutdownChan
+		hubShutdownDone := messagingHub.Shutdown()
+		select {
+		case <-hubShutdownDone:
+		case <-shutdownCtx.Done():
+		}
 	})
 	wg.Wait()
 	return nil
@@ -120,7 +120,7 @@ func main() {
 	// TODO: add shutdown on db connection loss
 	ctx := context.Background()
 	if err := run(ctx, os.Stdout, os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
+		slog.Error("Application was shut down due to an error", "error", err)
 		os.Exit(1)
 	}
 }

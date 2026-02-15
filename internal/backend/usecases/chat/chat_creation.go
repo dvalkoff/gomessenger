@@ -24,7 +24,7 @@ func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (Cha
 		chatUsers = append(chatUsers, ChatUserRow{userToAdd, "user"})
 	}
 	chatRow := ChatRow{
-		name: createChatInfo.Name,
+		name:  createChatInfo.Name,
 		users: chatUsers,
 	}
 	chat, err := useCase.chatRepository.CreateChat(chatRow)
@@ -45,7 +45,7 @@ func (useCase *createChatUseCase) AddUserToChat(user string, addUserToChatInfo A
 	}
 	chatUserRow := ChatUserRow{
 		nickname: addUserToChatInfo.Nickname,
-		role: "user",
+		role:     "user",
 	}
 	err = useCase.chatRepository.AddUsersToChat(addUserToChatInfo.ChatId, []ChatUserRow{chatUserRow})
 	if err != nil {
@@ -66,8 +66,8 @@ func findUserByNickname(users []ChatUserRow, nickname string) *ChatUserRow {
 
 func mapChatInfo(chat ChatRow) ChatInfo {
 	return ChatInfo{
-		Id: chat.id,
-		Name: chat.name,
+		Id:    chat.id,
+		Name:  chat.name,
 		Users: mapUsers(chat.users),
 	}
 }
@@ -77,7 +77,7 @@ func mapUsers(users []ChatUserRow) []ChatUser {
 	for i, user := range users {
 		mappedUsers[i] = ChatUser{
 			Nickname: user.nickname,
-			Role: user.role,
+			Role:     user.role,
 		}
 	}
 	return mappedUsers

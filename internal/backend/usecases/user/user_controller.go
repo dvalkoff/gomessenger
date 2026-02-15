@@ -18,14 +18,14 @@ type UserController interface {
 type userController struct {
 	userRegistrationUseCase UserRegistrationUseCase
 	findUsersUseCase        FindUsersUseCase
-	friendsService FriendsService
+	friendsService          FriendsService
 }
 
 func NewUserController(userRegistrationUseCase UserRegistrationUseCase, findUsersUseCase FindUsersUseCase, friendsService FriendsService) UserController {
 	return &userController{
 		userRegistrationUseCase: userRegistrationUseCase,
 		findUsersUseCase:        findUsersUseCase,
-		friendsService: friendsService,
+		friendsService:          friendsService,
 	}
 }
 

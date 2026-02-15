@@ -2,18 +2,19 @@ package config
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
-	"os"
 	"time"
-
-	"github.com/dvalkoff/gomessenger/internal/backend/middleware"
 )
+
+type MiddlewareFunc func(next http.Handler) http.Handler
 
 func SetUpAndRunServer(
 	config HttpConfig,
-	corsProvider middleware.CorsMiddleware,
-	authProvider middleware.AuthenticationProvider,
+	corsProvider MiddlewareFunc,
+	handleAuth MiddlewareFunc,
+	handleWsAuth MiddlewareFunc,
+	handleLogIn http.Handler,
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
 	handleAddFriend http.Handler,
@@ -25,7 +26,9 @@ func SetUpAndRunServer(
 ) *http.Server {
 	handler := NewHandlers(
 		corsProvider,
-		authProvider,
+		handleAuth,
+		handleWsAuth,
+		handleLogIn,
 		handleRegisterUser,
 		handleFindUsers,
 		handleAddFriend,
@@ -36,17 +39,17 @@ func SetUpAndRunServer(
 		getRealtimeUpdates,
 	)
 	httpServer := &http.Server{
-		Addr: fmt.Sprintf(":%d", config.Port),
-		Handler: handler,
-		ReadTimeout: time.Duration(config.ReadTimeoutMs) * time.Millisecond,
+		Addr:         fmt.Sprintf(":%d", config.Port),
+		Handler:      handler,
+		ReadTimeout:  time.Duration(config.ReadTimeoutMs) * time.Millisecond,
 		WriteTimeout: time.Duration(config.WriteTimeoutMs) * time.Millisecond,
 	}
-	
+
 	go func() {
-		log.Printf("listening on %s\n", httpServer.Addr)
+		slog.Info(fmt.Sprintf("listening on addr %s", httpServer.Addr))
 		err := httpServer.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
+			slog.Error("error listening and serving", "error", err)
 		}
 	}()
 
@@ -54,8 +57,10 @@ func SetUpAndRunServer(
 }
 
 func NewHandlers(
-	corsProvider middleware.CorsMiddleware,
-	authProvider middleware.AuthenticationProvider,
+	corsProvider MiddlewareFunc,
+	handleAuth MiddlewareFunc,
+	handleWsAuth MiddlewareFunc,
+	handleLogIn http.Handler,
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
 	handleAddFriend http.Handler,
@@ -67,18 +72,20 @@ func NewHandlers(
 ) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.Handle("POST /signup", 					  handleRegisterUser)
-	mux.Handle("POST /signin", 					  authProvider.LogIn())
-	mux.Handle("GET /users/{nickname}", 		  authProvider.AuthMiddleware(handleFindUsers))
-	mux.Handle("POST /users/friends/{friendsNickname}",  authProvider.AuthMiddleware(handleAddFriend))
-	mux.Handle("GET /users/friends",  authProvider.AuthMiddleware(handleGetFriends))
+	mux.Handle("POST /signup", handleRegisterUser)
+	mux.Handle("POST /signin", handleLogIn)
+	mux.Handle("GET /users/{nickname}", handleAuth(handleFindUsers))
+	mux.Handle("POST /users/friends/{friendsNickname}", handleAuth(handleAddFriend))
+	mux.Handle("GET /users/friends", handleAuth(handleGetFriends))
 
-	mux.Handle("POST /chats",    authProvider.AuthMiddleware(handleCreateChat))
-	mux.Handle("GET /chats", 	  authProvider.AuthMiddleware(getChats))
+	mux.Handle("POST /chats", handleAuth(handleCreateChat))
+	mux.Handle("GET /chats", handleAuth(getChats))
 	// mux.Handle("PATCH /chats/{chatId}/participants", addUserToChat) // TODO: fix {chatId}
-	mux.Handle("GET /messaging", authProvider.AuthWsMiddleware(getRealtimeUpdates))
+	mux.Handle("GET /messaging", handleWsAuth(getRealtimeUpdates))
 
 	var handler http.Handler = mux
-	handler = corsProvider.HandleCors(handler)
+	handler = corsProvider(handler)
+	// TODO: panic recoverer handler
+
 	return handler
 }

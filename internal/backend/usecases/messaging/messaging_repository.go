@@ -6,11 +6,11 @@ import (
 )
 
 type MessageRow struct {
-	id int
+	id      int
 	payload string
-	sender string
-	chatId int
-	sentAt time.Time
+	sender  string
+	chatId  int
+	sentAt  time.Time
 }
 
 type MessagingRepository interface {

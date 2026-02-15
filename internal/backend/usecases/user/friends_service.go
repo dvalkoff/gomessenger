@@ -26,7 +26,7 @@ func (service *friendsService) GetFriends(userNickname string) ([]UserInfo, erro
 	for i, userRow := range userRows {
 		users[i] = UserInfo{
 			Nickname: userRow.Nickname,
-			Name: userRow.Name,
+			Name:     userRow.Name,
 		}
 	}
 	return users, nil

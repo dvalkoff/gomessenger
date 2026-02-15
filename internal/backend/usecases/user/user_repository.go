@@ -3,8 +3,8 @@ package user
 import "database/sql"
 
 type UserRow struct {
-	Nickname string
-	Name string
+	Nickname       string
+	Name           string
 	HashedPassword []byte
 }
 
@@ -39,7 +39,7 @@ func (repository *userRepository) FindUsersByNickname(nicknameSubstring string) 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	userRows := []UserRow{}
 	for rows.Next() {
 		userRow := UserRow{}
@@ -68,7 +68,7 @@ func (repository *userRepository) GetFriends(nickname string) ([]UserRow, error)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	userRows := []UserRow{}
 	for rows.Next() {
 		userRow := UserRow{}
