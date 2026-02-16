@@ -21,15 +21,14 @@ const (
 	PostgreSQLConnectionString = "POSTGRESQL_CONNECTION_STRING"
 
 	GracefulShutdownTimeoutSec = "GRACEFUL_SHUTDOWN_TIMEOUT_SEC"
-
 )
 
 const (
 	ENVIRONMENT_VAR = "ENVIRONMENT"
-	PROD_ENV_NAME = "PROD"
-	
+	PROD_ENV_NAME   = "PROD"
+
 	PROD_ENV_FILE = "prod.env"
-	DEV_ENV_FILE = ".env"
+	DEV_ENV_FILE  = ".env"
 )
 
 func LoadEnvFromFile() (map[string]string, error) {

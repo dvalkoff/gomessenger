@@ -7,17 +7,17 @@ import (
 )
 
 type Config struct {
-	HttpConfig    HttpConfig
-	DbConfig      DbConfig
-	LoggingConfig LoggingConfig
+	HttpConfig             HttpConfig
+	DbConfig               DbConfig
+	LoggingConfig          LoggingConfig
 	GracefulShutdownConfig GracefulShutdownConfig
 }
 
 type HttpConfig struct {
-	Port               int
-	ReadTimeoutMs      int
-	WriteTimeoutMs     int
-	JwtSecret string
+	Port           int
+	ReadTimeoutMs  int
+	WriteTimeoutMs int
+	JwtSecret      string
 	CorsAllowedURL string
 }
 
@@ -29,10 +29,10 @@ func makeHttpConfig(configMap map[string]string) (HttpConfig, error) {
 		return HttpConfig{}, err
 	}
 	return HttpConfig{
-		Port:               httpPort,
-		ReadTimeoutMs:      readTimeout,
-		WriteTimeoutMs:     writeTimeout,
-		JwtSecret: configMap[env.HttpSecutityJwtSecret],
+		Port:           httpPort,
+		ReadTimeoutMs:  readTimeout,
+		WriteTimeoutMs: writeTimeout,
+		JwtSecret:      configMap[env.HttpSecutityJwtSecret],
 		CorsAllowedURL: configMap[env.HttpSecurityCorsAllowedURL],
 	}, nil
 }
@@ -94,9 +94,9 @@ func MakeAppConfig() (Config, error) {
 		return Config{}, err
 	}
 	return Config{
-		HttpConfig:    httpConfig,
-		DbConfig:      dbConfig,
-		LoggingConfig: loggingConfig,
+		HttpConfig:             httpConfig,
+		DbConfig:               dbConfig,
+		LoggingConfig:          loggingConfig,
 		GracefulShutdownConfig: gracefulShutdownConfig,
 	}, nil
 }

@@ -94,7 +94,7 @@ func gracefulShutdown(
 		shutdownCtx := context.Background()
 		shutdownCtx, cancelShutdown := context.WithTimeout(
 			shutdownCtx,
-			time.Duration(config.ShutdownTimeoutSec) * time.Second,
+			time.Duration(config.ShutdownTimeoutSec)*time.Second,
 		)
 		defer cancelShutdown()
 
