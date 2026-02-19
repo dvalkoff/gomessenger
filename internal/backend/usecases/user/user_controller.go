@@ -6,26 +6,25 @@ import (
 	"net/http"
 
 	"github.com/dvalkoff/gomessenger/internal/backend/utils"
+	"github.com/google/uuid"
 )
 
 type UserController interface {
 	RegisterUser() http.Handler
 	FindUsers() http.Handler
-	AddFriend() http.Handler
-	GetFriends() http.Handler
+	AddContact() http.Handler
+	GetContacts() http.Handler
 }
 
 type userController struct {
-	userRegistrationUseCase UserRegistrationUseCase
-	findUsersUseCase        FindUsersUseCase
-	friendsService          FriendsService
+	userService     UserService
+	contactsService ContactsService
 }
 
-func NewUserController(userRegistrationUseCase UserRegistrationUseCase, findUsersUseCase FindUsersUseCase, friendsService FriendsService) UserController {
+func NewUserController(userService UserService, contactsServer ContactsService) UserController {
 	return &userController{
-		userRegistrationUseCase: userRegistrationUseCase,
-		findUsersUseCase:        findUsersUseCase,
-		friendsService:          friendsService,
+		userService:     userService,
+		contactsService: contactsServer,
 	}
 }
 
@@ -37,12 +36,15 @@ func (controller *userController) RegisterUser() http.Handler {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			err = controller.userRegistrationUseCase.RegisterUser(userInfo)
+			responseDto, err := controller.userService.RegisterUser(userInfo)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			utils.EncodeNoBody(w, r, http.StatusOK)
+			err = utils.Encode(w, r, http.StatusOK, responseDto)
+			if err != nil {
+				slog.Error("Failed to encode response", "error", err)
+			}
 		},
 	)
 }
@@ -55,7 +57,7 @@ func (controller *userController) FindUsers() http.Handler {
 				utils.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
 				return
 			}
-			users, err := controller.findUsersUseCase.FindUsers(nickname)
+			users, err := controller.userService.FindUsers(nickname)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -68,16 +70,16 @@ func (controller *userController) FindUsers() http.Handler {
 	)
 }
 
-func (controller *userController) AddFriend() http.Handler {
+func (controller *userController) AddContact() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := utils.GetNickname(r.Context())
-			friendsNickname := r.PathValue("friendsNickname")
-			if len(friendsNickname) == 0 {
-				utils.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("friendsNickname parameter shouldn't be empty"))
+			userId := utils.GetUserId(r.Context())
+			contactUserId, err := uuid.Parse(r.PathValue("contactId"))
+			if err != nil {
+				utils.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("contactId parameter is invalid: %w", err))
 				return
 			}
-			err := controller.friendsService.AddFriend(nickname, friendsNickname)
+			err = controller.contactsService.AddContact(userId, contactUserId)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -87,11 +89,11 @@ func (controller *userController) AddFriend() http.Handler {
 	)
 }
 
-func (controller *userController) GetFriends() http.Handler {
+func (controller *userController) GetContacts() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := utils.GetNickname(r.Context())
-			users, err := controller.friendsService.GetFriends(nickname)
+			userId := utils.GetUserId(r.Context())
+			users, err := controller.contactsService.GetContacts(userId)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 			}

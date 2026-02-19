@@ -1,0 +1,22 @@
+edition = "2023";
+
+package protoevent;
+
+option go_package = "github.com/dvalkoff/gomessenger/gen/protoevent";
+
+message ServerEvent {
+  uint64 id = 1;
+  bytes user_id = 2;
+  bytes receiver_id = 3;
+  bytes chat_id = 4;
+  bytes payload = 5;
+}
+
+message EventCreated {
+  uint64 id = 1;
+}
+
+message ErrorResponse {
+  int32 code = 1;
+  string error_info = 2;
+}

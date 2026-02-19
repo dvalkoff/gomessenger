@@ -3,7 +3,6 @@ package messaging
 import (
 	"context"
 	"log/slog"
-	"slices"
 
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/chat"
 )
@@ -57,8 +56,8 @@ func (h *messagingHub) Run() {
 			h.processRegisterClient(client)
 		case client := <-h.unregisterClientChan:
 			h.processUnregisterClient(client)
-		case message := <-h.messagesChan:
-			h.processSendMessage(message)
+		case <-h.messagesChan:
+			h.processSendMessage()
 		case <-h.shutdownCtx.Done():
 			h.processShutdown()
 			return
@@ -105,40 +104,20 @@ func (h *messagingHub) processUnregisterClient(client *MessagingClient) {
 	close(client.send)
 }
 
-func (h *messagingHub) processSendMessage(message Message) {
-	nicknames, err := h.chatRepository.GetNicknamesByChatId(message.ChatId)
-	if err != nil {
-		slog.Error("Failed to get chat users", "error", err)
-		return
-	}
-	if !slices.Contains(nicknames, message.Sender) {
-		slog.Warn("User is not allowed to send a message to the chat", "chatId", message.ChatId, "nickname", message.Sender)
-		return
-	}
+func (h *messagingHub) processSendMessage() {
+	// event.Id = row.id
 
-	row, err := h.messagingRepository.SaveMessage(MessageRow{
-		payload: message.Payload,
-		sender:  message.Sender,
-		chatId:  message.ChatId,
-		sentAt:  message.SentAt,
-	})
-	if err != nil {
-		slog.Error("Failed to save message", "error", err)
-		return
-	}
-	message.Id = row.id
-
-	for _, nickname := range nicknames {
-		if clients, ok := h.clients[nickname]; ok {
-			for _, client := range clients {
-				select {
-				case client.send <- message:
-				default:
-					slog.Warn("Failed to send message to a client", "chat", message.ChatId, "nickname", client.nickname)
-				}
-			}
-		}
-	}
+	// for _, nickname := range nicknames {
+	// 	if clients, ok := h.clients[nickname]; ok {
+	// 		for _, client := range clients {
+	// 			select {
+	// 			case client.send <- event:
+	// 			default:
+	// 				slog.Warn("Failed to send message to a client", "chat", event.ChatId, "nickname", client.nickname)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 func (h *messagingHub) processShutdown() {

@@ -14,6 +14,7 @@
     <include file="1-create-schema.sql" relativeToChangelogFile="true"/>
     <include file="2-create-users.sql" relativeToChangelogFile="true"/>
     <include file="3-create-chats.sql" relativeToChangelogFile="true"/>
-    <include file="4-create-messages.sql" relativeToChangelogFile="true"/>
-    <include file="5-create-friends.sql" relativeToChangelogFile="true"/>
+    <include file="5-create-contacts.sql" relativeToChangelogFile="true"/>
+    <include file="6-create-pub-keys.sql" relativeToChangelogFile="true"/>
+    <include file="7-create-events.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

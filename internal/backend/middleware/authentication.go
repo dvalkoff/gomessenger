@@ -11,6 +11,7 @@ import (
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/user"
 	"github.com/dvalkoff/gomessenger/internal/backend/utils"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,8 +20,8 @@ const (
 )
 
 type UserAuthenticationInfo struct {
-	Nickname string `json:"nickname"`
-	Password string `json:"password"`
+	UserId   uuid.UUID `json:"userId"`
+	Password string    `json:"password"`
 }
 
 type AuthenticationInto struct {
@@ -51,22 +52,21 @@ func (authProvider *authenticationProvider) LogIn() http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			authInfo, err := utils.Decode[UserAuthenticationInfo](r)
 
-			users, err := authProvider.userRepository.FindUsersByNickname(authInfo.Nickname)
-			if err != nil || len(users) == 0 {
-				slog.Error("Failed to get user by nickname", "nickname", authInfo.Nickname, "error", err)
+			user, err := authProvider.userRepository.FindUserById(authInfo.UserId)
+			if err != nil {
+				slog.Error("Failed to get user by id", "id", authInfo.UserId, "error", err)
 				err := fmt.Errorf("User not found %w", err)
 				utils.EncodeError(w, r, http.StatusUnauthorized, err)
 				return
 			}
-			user := users[0]
 			err = bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(authInfo.Password))
 			if err != nil {
-				slog.Warn("Password is not correct", "nickname", authInfo.Nickname, "error", err)
+				slog.Warn("Password is not correct", "id", authInfo.UserId, "error", err)
 				utils.EncodeError(w, r, http.StatusUnauthorized, err)
 				return
 			}
 
-			tokenStr, err := authProvider.createAndSignToken(authInfo.Nickname)
+			tokenStr, err := authProvider.createAndSignToken(authInfo.UserId)
 			if err != nil {
 				slog.Error("Failed to sign token", "error", err)
 				utils.EncodeError(w, r, http.StatusUnauthorized, err)
@@ -87,11 +87,11 @@ func (authProvider *authenticationProvider) LogIn() http.Handler {
 	)
 }
 
-func (authProvider *authenticationProvider) createAndSignToken(nickname string) (string, error) {
+func (authProvider *authenticationProvider) createAndSignToken(userId uuid.UUID) (string, error) {
 	expirationTime := time.Now().Add(accessTokenExpirationTimeSeconds * time.Second)
 	jwt := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
-		utils.UserNicknameKey: nickname,
-		utils.ExpirationTime:  jwt.NewNumericDate(expirationTime),
+		utils.UserIdKey:      userId,
+		utils.ExpirationTime: jwt.NewNumericDate(expirationTime),
 	})
 	return jwt.SignedString(authProvider.signingJwtSecret)
 }

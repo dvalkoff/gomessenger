@@ -11,32 +11,41 @@ type MiddlewareFunc func(next http.Handler) http.Handler
 
 func SetUpAndRunServer(
 	config HttpConfig,
+	
 	corsProvider MiddlewareFunc,
 	handleAuth MiddlewareFunc,
 	handleWsAuth MiddlewareFunc,
 	handleLogIn http.Handler,
+
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
-	handleAddFriend http.Handler,
-	handleGetFriends http.Handler,
+	handleAddContact http.Handler,
+	handleGetContacts http.Handler,
+
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
 	getChats http.Handler,
-	getRealtimeUpdates http.Handler,
+
+	handleEvents http.Handler,
+	createEvent http.Handler,
 ) *http.Server {
 	handler := NewHandlers(
 		corsProvider,
 		handleAuth,
 		handleWsAuth,
 		handleLogIn,
+
 		handleRegisterUser,
 		handleFindUsers,
-		handleAddFriend,
-		handleGetFriends,
+		handleAddContact,
+		handleGetContacts,
+
 		handleCreateChat,
 		addUserToChat,
 		getChats,
-		getRealtimeUpdates,
+
+		handleEvents,
+		createEvent,
 	)
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", config.Port),
@@ -61,27 +70,34 @@ func NewHandlers(
 	handleAuth MiddlewareFunc,
 	handleWsAuth MiddlewareFunc,
 	handleLogIn http.Handler,
+
 	handleRegisterUser http.Handler,
 	handleFindUsers http.Handler,
-	handleAddFriend http.Handler,
-	handleGetFriends http.Handler,
+	handleAddContact http.Handler,
+	handleGetContacts http.Handler,
+
 	handleCreateChat http.Handler,
 	addUserToChat http.Handler,
 	getChats http.Handler,
-	getRealtimeUpdates http.Handler,
+
+	handleEvents http.Handler,
+	createEvent http.Handler,
 ) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.Handle("POST /signup", handleRegisterUser)
 	mux.Handle("POST /signin", handleLogIn)
+
+	mux.Handle("POST /signup", handleRegisterUser)
 	mux.Handle("GET /users/{nickname}", handleAuth(handleFindUsers))
-	mux.Handle("POST /users/friends/{friendsNickname}", handleAuth(handleAddFriend))
-	mux.Handle("GET /users/friends", handleAuth(handleGetFriends))
+	mux.Handle("POST /users/contacts/{contactId}", handleAuth(handleAddContact))
+	mux.Handle("GET /users/contacts", handleAuth(handleGetContacts))
 
 	mux.Handle("POST /chats", handleAuth(handleCreateChat))
+	mux.Handle("PATCH /chats/participants", handleAuth(addUserToChat))
 	mux.Handle("GET /chats", handleAuth(getChats))
-	// mux.Handle("PATCH /chats/{chatId}/participants", addUserToChat) // TODO: fix {chatId}
-	mux.Handle("GET /messaging", handleWsAuth(getRealtimeUpdates))
+
+	mux.Handle("GET /messaging", handleWsAuth(handleEvents))
+	mux.Handle("POST /messaging", handleAuth(createEvent))
 
 	var handler http.Handler = mux
 	handler = corsProvider(handler)

@@ -1,28 +1,21 @@
 package chat
 
+import "github.com/google/uuid"
+
 type CreateChatInfo struct {
-	Name            string   `json:"name"`
-	CreatorNickname string   `json:"creatorNickname"`
-	Users           []string `json:"users"`
+	Users []uuid.UUID `json:"users"`
 }
 
 type ChatInfo struct {
-	Id    int        `json:"id"`
-	Name  string     `json:"name"`
-	Users []ChatUser `json:"users"`
-}
-
-type ChatUser struct {
-	Nickname string `json:"nickname"`
-	Role     string `json:"role"`
+	Id    uuid.UUID   `json:"id"`
+	Users []uuid.UUID `json:"users"`
 }
 
 type AddUserToChatInfo struct {
-	Nickname string `json:"nickname"`
-	ChatId   int    `json:"chatId"`
+	UserId uuid.UUID `json:"nickname"`
+	ChatId uuid.UUID `json:"chatId"`
 }
 
 type ChatInfoNoUsers struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id uuid.UUID `json:"id"`
 }

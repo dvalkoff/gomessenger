@@ -4,15 +4,16 @@ import (
 	"context"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 const (
-	UserContextKey  = "user"
-	UserNicknameKey = "sub"
-	ExpirationTime  = "exp"
+	UserContextKey = "user"
+	UserIdKey      = "sub"
+	ExpirationTime = "exp"
 )
 
-func GetNickname(ctx context.Context) string {
+func GetUserId(ctx context.Context) uuid.UUID {
 	user := ctx.Value(UserContextKey).(jwt.MapClaims)
-	return user[UserNicknameKey].(string)
+	return user[UserIdKey].(uuid.UUID)
 }

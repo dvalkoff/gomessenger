@@ -4,4 +4,3 @@
 CREATE SCHEMA IF NOT EXISTS messenger;
 
 --rollback DROP SCHEMA IF EXISTS messenger;
-

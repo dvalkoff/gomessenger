@@ -14,7 +14,7 @@ import (
 	"github.com/dvalkoff/gomessenger/internal/backend/config"
 	"github.com/dvalkoff/gomessenger/internal/backend/middleware"
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/chat"
-	"github.com/dvalkoff/gomessenger/internal/backend/usecases/messaging"
+	"github.com/dvalkoff/gomessenger/internal/backend/usecases/events"
 	"github.com/dvalkoff/gomessenger/internal/backend/usecases/user"
 )
 
@@ -32,25 +32,24 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 		return err
 	}
 	userRepository := user.NewUserRepository(db)
-	userRegistrationUseCase := user.NewUserUserRegistrationUseCase(userRepository)
-	findUsersUseCase := user.NewFindUsersUseCase(userRepository)
-	friendsService := user.NewFriendsService(userRepository)
-	userController := user.NewUserController(userRegistrationUseCase, findUsersUseCase, friendsService)
+	pubKeyRepository := user.NewPubKeyRepository(db)
+	userService := user.NewUserService(userRepository, pubKeyRepository)
+	contactsService := user.NewContactsService(userRepository)
+	userController := user.NewUserController(userService, contactsService)
 
 	chatRepository := chat.NewChatRepository(db)
-	createChatUseCase := chat.NewCreateChatUseCase(chatRepository)
-	chatSelectionUseCase := chat.NewChatSelection(chatRepository)
-	chatController := chat.NewChatController(createChatUseCase, chatSelectionUseCase)
+	chatService := chat.NewChatService(chatRepository)
+	chatController := chat.NewChatController(chatService)
 
-	messagingRepository := messaging.NewMessagingRepository(db)
-	messagingHub := messaging.NewMessagingHub(chatRepository, messagingRepository)
-	messagingService := messaging.NewMessagingService(messagingHub, messagingRepository)
-	messagingController := messaging.NewMessagingConrtoller(messagingService)
+	eventsRepository := events.NewEventsRepository(db)
+	eventsHub := events.NewEventsHub()
+	eventsService := events.NewEventService(chatRepository, eventsRepository, eventsHub)
+	eventsController := events.NewEventsController(eventsService)
 
 	authProvider := middleware.NewAuthenticationProvider(userRepository, appConfig.HttpConfig.JwtSecret)
 	corsProvider := middleware.NewCorsMiddleware(appConfig.HttpConfig.CorsAllowedURL)
 
-	go messagingHub.Run()
+	go eventsHub.Run()
 
 	server := config.SetUpAndRunServer(
 		appConfig.HttpConfig,
@@ -58,14 +57,19 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 		config.MiddlewareFunc(authProvider.AuthMiddleware),
 		config.MiddlewareFunc(authProvider.AuthWsMiddleware),
 		authProvider.LogIn(),
+
 		userController.RegisterUser(),
 		userController.FindUsers(),
-		userController.AddFriend(),
-		userController.GetFriends(),
+		userController.AddContact(),
+		userController.GetContacts(),
+		
 		chatController.CreateChat(),
 		chatController.AddUserToChat(),
 		chatController.GetChats(),
-		messagingController.GetRealtimeUpdates(),
+
+
+		eventsController.HandleEventsWS(),
+		eventsController.CreateEvent(),
 	)
 
 	return gracefulShutdown(
@@ -73,7 +77,6 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 		ctx,
 		server,
 		db,
-		messagingHub,
 	)
 }
 
@@ -82,7 +85,6 @@ func gracefulShutdown(
 	ctx context.Context,
 	httpServer *http.Server,
 	db *sql.DB,
-	messagingHub messaging.MessagingHub,
 ) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
@@ -104,12 +106,6 @@ func gracefulShutdown(
 
 		if err := db.Close(); err != nil {
 			slog.Error("Error shutting down database connection pool", "error", err)
-		}
-
-		hubShutdownDone := messagingHub.Shutdown()
-		select {
-		case <-hubShutdownDone:
-		case <-shutdownCtx.Done():
 		}
 	})
 	wg.Wait()

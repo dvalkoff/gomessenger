@@ -14,26 +14,23 @@ type ChatController interface {
 }
 
 type chatController struct {
-	createChatUseCase CreateChatUseCase
-	chatSelection     ChatSelection
+	chatService ChatService
 }
 
-func NewChatController(createChatUseCase CreateChatUseCase, chatSelection ChatSelection) ChatController {
-	return &chatController{createChatUseCase: createChatUseCase, chatSelection: chatSelection}
+func NewChatController(createChatUseCase ChatService) ChatController {
+	return &chatController{chatService: createChatUseCase}
 }
 
 func (controller *chatController) CreateChat() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := utils.GetNickname(r.Context())
+			userId := utils.GetUserId(r.Context())
 			createChatInfo, err := utils.Decode[CreateChatInfo](r)
 			if err != nil {
-				utils.EncodeError(w, r, http.StatusInternalServerError, err)
+				utils.EncodeError(w, r, http.StatusBadRequest, err)
 				return
 			}
-			createChatInfo.CreatorNickname = nickname
-
-			createdChat, err := controller.createChatUseCase.CreateChat(createChatInfo)
+			createdChat, err := controller.chatService.CreateChat(createChatInfo, userId)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -48,8 +45,8 @@ func (controller *chatController) CreateChat() http.Handler {
 func (controller *chatController) GetChats() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := utils.GetNickname(r.Context())
-			chats, err := controller.chatSelection.GetChats(nickname)
+			userId := utils.GetUserId(r.Context())
+			chats, err := controller.chatService.GetChats(userId)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -65,13 +62,13 @@ func (controller *chatController) GetChats() http.Handler {
 func (controller *chatController) AddUserToChat() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := utils.GetNickname(r.Context())
+			userId := utils.GetUserId(r.Context())
 			addUserToChatInfo, err := utils.Decode[AddUserToChatInfo](r)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			chatInfo, err := controller.createChatUseCase.AddUserToChat(nickname, addUserToChatInfo)
+			chatInfo, err := controller.chatService.AddUserToChat(userId, addUserToChatInfo)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return

@@ -27,7 +27,7 @@ func NewMessagingConrtoller(messagingService MessagingService) MessagingConrtoll
 func (controller *messagingConrtoller) GetRealtimeUpdates() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			nickname := utils.GetNickname(r.Context())
+			nickname := "" //utils.GetNickname(r.Context())
 			offset, err := getMessagesOffset(r)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusBadRequest, err)

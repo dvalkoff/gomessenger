@@ -1,15 +1,13 @@
 --liquibase formatted sql
 
 --changeset id:create-users-table author:dvalkov
+
 CREATE TABLE IF NOT EXISTS messenger.users(
-    nickname VARCHAR PRIMARY KEY,
-    name VARCHAR,
+    id UUID PRIMARY KEY,
+    nickname VARCHAR NOT NULL UNIQUE,
+    identity_pub_key BYTEA NOT NULL,
+    signed_pub_key BYTEA NOT NULL,
     password BYTEA NOT NULL
 );
-
-COMMENT ON TABLE messenger.users IS 'Table stores messenger users';
-COMMENT ON COLUMN messenger.users.nickname IS 'Users unique nickname';
-COMMENT ON COLUMN messenger.users.name IS 'Users name';
-COMMENT ON COLUMN messenger.users.password IS 'Encrypted users password';
 
 --rollback DROP TABLE IF EXISTS messenger.users;
