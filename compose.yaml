@@ -37,7 +37,7 @@ services:
       LIQUIBASE_COMMAND_PASSWORD: password
 
   messenger:
-    build: .
+    build: ./backend/
     depends_on:
       db:
         condition: service_healthy
@@ -45,6 +45,6 @@ services:
       liquibase:
         condition: service_completed_successfully
     volumes:
-      - ./.env:/app/.env
+      - ./backend/.env:/app/.env
     ports:
       - 8080:8080
