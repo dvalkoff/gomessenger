@@ -1,4 +1,4 @@
-module github.com/dvalkoff/gomessenger
+module github.com/dvalkoff/gomessenger/backend
 
 go 1.25.5
 

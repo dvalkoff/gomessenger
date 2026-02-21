@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dvalkoff/gomessenger/internal/backend/config"
-	"github.com/dvalkoff/gomessenger/internal/backend/middleware"
-	"github.com/dvalkoff/gomessenger/internal/backend/usecases/chat"
-	"github.com/dvalkoff/gomessenger/internal/backend/usecases/events"
-	"github.com/dvalkoff/gomessenger/internal/backend/usecases/user"
+	"github.com/dvalkoff/gomessenger/backend/internal/config"
+	"github.com/dvalkoff/gomessenger/backend/internal/middleware"
+	"github.com/dvalkoff/gomessenger/backend/internal/usecases/chat"
+	"github.com/dvalkoff/gomessenger/backend/internal/usecases/events"
+	"github.com/dvalkoff/gomessenger/backend/internal/usecases/user"
 )
 
 func run(ctx context.Context, w io.Writer, args []string) error {
@@ -62,11 +62,10 @@ func run(ctx context.Context, w io.Writer, args []string) error {
 		userController.FindUsers(),
 		userController.AddContact(),
 		userController.GetContacts(),
-		
+
 		chatController.CreateChat(),
 		chatController.AddUserToChat(),
 		chatController.GetChats(),
-
 
 		eventsController.HandleEventsWS(),
 		eventsController.CreateEvent(),
