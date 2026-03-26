@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	accessTokenExpirationTimeSeconds = 60 * 60 * 24 * 30
+	accessTokenExpirationTime = 30 * (24 * time.Hour)
 )
 
 type UserAuthenticationInfo struct {
@@ -51,7 +51,7 @@ func (authProvider *authenticationProvider) LogIn() http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			authInfo, err := utils.Decode[UserAuthenticationInfo](r)
 
-			users, err := authProvider.userRepository.FindUsersByNickname(authInfo.Nickname)
+			users, err := authProvider.userRepository.FindUsersByNickname(r.Context(), authInfo.Nickname)
 			if err != nil || len(users) == 0 {
 				slog.Error("Failed to get user by nickname", "nickname", authInfo.Nickname, "error", err)
 				err := fmt.Errorf("User not found %w", err)
@@ -88,7 +88,7 @@ func (authProvider *authenticationProvider) LogIn() http.Handler {
 }
 
 func (authProvider *authenticationProvider) createAndSignToken(nickname string) (string, error) {
-	expirationTime := time.Now().Add(accessTokenExpirationTimeSeconds * time.Second)
+	expirationTime := time.Now().Add(accessTokenExpirationTime)
 	jwt := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		utils.UserNicknameKey: nickname,
 		utils.ExpirationTime:  jwt.NewNumericDate(expirationTime),

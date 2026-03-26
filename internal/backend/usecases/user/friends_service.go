@@ -1,8 +1,10 @@
 package user
 
+import "context"
+
 type FriendsService interface {
-	AddFriend(userNickname string, friendNickname string) error
-	GetFriends(userNickname string) ([]UserInfo, error)
+	AddFriend(ctx context.Context, userNickname string, friendNickname string) error
+	GetFriends(ctx context.Context, userNickname string) ([]UserInfo, error)
 }
 
 type friendsService struct {
@@ -13,12 +15,12 @@ func NewFriendsService(userRepository UserRepository) FriendsService {
 	return &friendsService{userRepository: userRepository}
 }
 
-func (service *friendsService) AddFriend(userNickname string, friendNickname string) error {
-	return service.userRepository.AddFriend(userNickname, friendNickname)
+func (service *friendsService) AddFriend(ctx context.Context, userNickname string, friendNickname string) error {
+	return service.userRepository.AddFriend(ctx, userNickname, friendNickname)
 }
 
-func (service *friendsService) GetFriends(userNickname string) ([]UserInfo, error) {
-	userRows, err := service.userRepository.GetFriends(userNickname)
+func (service *friendsService) GetFriends(ctx context.Context, userNickname string) ([]UserInfo, error) {
+	userRows, err := service.userRepository.GetFriends(ctx, userNickname)
 	if err != nil {
 		return nil, err
 	}

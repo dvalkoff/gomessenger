@@ -37,7 +37,7 @@ func (controller *messagingConrtoller) GetRealtimeUpdates() http.Handler {
 				nickname: nickname,
 				offset:   offset,
 			}
-			err = controller.messagingService.CreateClient(cci, w, r)
+			err = controller.messagingService.CreateClient(r.Context(), cci, w, r)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return

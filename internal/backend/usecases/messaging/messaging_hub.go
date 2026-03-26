@@ -106,7 +106,8 @@ func (h *messagingHub) processUnregisterClient(client *MessagingClient) {
 }
 
 func (h *messagingHub) processSendMessage(message Message) {
-	nicknames, err := h.chatRepository.GetNicknamesByChatId(message.ChatId)
+	ctx := context.Background()
+	nicknames, err := h.chatRepository.GetNicknamesByChatId(ctx, message.ChatId)
 	if err != nil {
 		slog.Error("Failed to get chat users", "error", err)
 		return
@@ -116,7 +117,7 @@ func (h *messagingHub) processSendMessage(message Message) {
 		return
 	}
 
-	row, err := h.messagingRepository.SaveMessage(MessageRow{
+	row, err := h.messagingRepository.SaveMessage(ctx, MessageRow{
 		payload: message.Payload,
 		sender:  message.Sender,
 		chatId:  message.ChatId,

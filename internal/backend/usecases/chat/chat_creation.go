@@ -1,12 +1,13 @@
 package chat
 
 import (
+	"context"
 	"fmt"
 )
 
 type CreateChatUseCase interface {
-	CreateChat(CreateChatInfo) (ChatInfo, error)
-	AddUserToChat(userNickname string, addUserToChatInfo AddUserToChatInfo) (ChatInfo, error)
+	CreateChat(context.Context, CreateChatInfo) (ChatInfo, error)
+	AddUserToChat(ctx context.Context, userNickname string, addUserToChatInfo AddUserToChatInfo) (ChatInfo, error)
 }
 
 type createChatUseCase struct {
@@ -17,7 +18,7 @@ func NewCreateChatUseCase(chatRepository ChatRepository) CreateChatUseCase {
 	return &createChatUseCase{chatRepository: chatRepository}
 }
 
-func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (ChatInfo, error) {
+func (useCase *createChatUseCase) CreateChat(ctx context.Context, createChatInfo CreateChatInfo) (ChatInfo, error) {
 	chatUsers := make([]ChatUserRow, 0)
 	chatUsers = append(chatUsers, ChatUserRow{createChatInfo.CreatorNickname, "admin"})
 	for _, userToAdd := range createChatInfo.Users {
@@ -27,15 +28,15 @@ func (useCase *createChatUseCase) CreateChat(createChatInfo CreateChatInfo) (Cha
 		name:  createChatInfo.Name,
 		users: chatUsers,
 	}
-	chat, err := useCase.chatRepository.CreateChat(chatRow)
+	chat, err := useCase.chatRepository.CreateChat(ctx, chatRow)
 	if err != nil {
 		return ChatInfo{}, err
 	}
 	return mapChatInfo(chat), nil
 }
 
-func (useCase *createChatUseCase) AddUserToChat(user string, addUserToChatInfo AddUserToChatInfo) (ChatInfo, error) {
-	chat, err := useCase.chatRepository.GetChat(addUserToChatInfo.ChatId)
+func (useCase *createChatUseCase) AddUserToChat(ctx context.Context, user string, addUserToChatInfo AddUserToChatInfo) (ChatInfo, error) {
+	chat, err := useCase.chatRepository.GetChat(ctx, addUserToChatInfo.ChatId)
 	if err != nil {
 		return ChatInfo{}, err
 	}
@@ -47,7 +48,7 @@ func (useCase *createChatUseCase) AddUserToChat(user string, addUserToChatInfo A
 		nickname: addUserToChatInfo.Nickname,
 		role:     "user",
 	}
-	err = useCase.chatRepository.AddUsersToChat(addUserToChatInfo.ChatId, []ChatUserRow{chatUserRow})
+	err = useCase.chatRepository.AddUsersToChat(ctx, addUserToChatInfo.ChatId, []ChatUserRow{chatUserRow})
 	if err != nil {
 		return ChatInfo{}, err
 	}

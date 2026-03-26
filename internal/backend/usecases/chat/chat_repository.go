@@ -1,7 +1,13 @@
 package chat
 
 import (
+	"context"
 	"database/sql"
+	"time"
+)
+
+const(
+	 txTimeout time.Duration = 1 * time.Second
 )
 
 type ChatRow struct {
@@ -16,84 +22,88 @@ type ChatUserRow struct {
 }
 
 type ChatRepository interface {
-	CreateChat(createChatInfo ChatRow) (ChatRow, error)
-	AddUsersToChat(chatId int, users []ChatUserRow) error
-	GetChat(chatId int) (ChatRow, error)
-	GetNicknamesByChatId(chatId int) ([]string, error)
-	GetChatIds() ([]int, error)
-	GetChatsNoUsersByNickname(nickname string) ([]ChatRow, error)
+	CreateChat(ctx context.Context, createChatInfo ChatRow) (ChatRow, error)
+	AddUsersToChat(ctx context.Context, chatId int, users []ChatUserRow) error
+	GetChat(ctx context.Context, chatId int) (ChatRow, error)
+	GetNicknamesByChatId(ctx context.Context, chatId int) ([]string, error)
+	GetChatIds(ctx context.Context) ([]int, error)
+	GetChatsNoUsersByNickname(ctx context.Context, nickname string) ([]ChatRow, error)
 }
 
 type chatRepository struct {
 	db *sql.DB
 }
 
-// https://blog.thibaut-rousseau.com/blog/sql-transactions-in-go-the-good-way/
-
 func NewChatRepository(db *sql.DB) ChatRepository {
 	return &chatRepository{db: db}
 }
 
-func (repository *chatRepository) CreateChat(createChatInfo ChatRow) (ChatRow, error) {
-	tx, err := repository.db.Begin()
+func (repository *chatRepository) CreateChat(ctx context.Context, createChatInfo ChatRow) (ChatRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
+	tx, err := repository.db.BeginTx(ctx, nil)
 	if err != nil {
 		return ChatRow{}, err
 	}
-	defer tx.Commit()
+	defer tx.Rollback()
 
-	err = repository.insertChatAndGetId(tx, &createChatInfo)
+	err = repository.insertChatAndGetId(ctx, tx, &createChatInfo)
 	if err != nil {
-		tx.Rollback()
 		return ChatRow{}, err
 	}
 
-	err = repository.addUsersToChatInTx(tx, createChatInfo.id, createChatInfo.users)
+	err = repository.addUsersToChatInTx(ctx, tx, createChatInfo.id, createChatInfo.users)
 	if err != nil {
-		tx.Rollback()
+		return ChatRow{}, err
+	}
+	if err := tx.Commit(); err != nil {
 		return ChatRow{}, err
 	}
 	return createChatInfo, nil
 }
 
-func (repository *chatRepository) insertChatAndGetId(tx *sql.Tx, chat *ChatRow) error {
+func (repository *chatRepository) insertChatAndGetId(ctx context.Context, tx *sql.Tx, chat *ChatRow) error {
 	sql := `INSERT INTO messenger.chats(name) VALUES ($1) RETURNING id`
-	err := tx.QueryRow(sql, chat.name).Scan(&chat.id)
+	err := tx.QueryRowContext(ctx, sql, chat.name).Scan(&chat.id)
 	return err
 }
 
-func (repository *chatRepository) AddUsersToChat(chatId int, users []ChatUserRow) error {
-	tx, err := repository.db.Begin()
+func (repository *chatRepository) AddUsersToChat(ctx context.Context, chatId int, users []ChatUserRow) error {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
+	tx, err := repository.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Commit()
-	err = repository.addUsersToChatInTx(tx, chatId, users)
+	defer tx.Rollback()
+	err = repository.addUsersToChatInTx(ctx, tx, chatId, users)
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
-	return nil
+	return tx.Commit()
 }
 
-func (repository *chatRepository) addUsersToChatInTx(tx *sql.Tx, chatId int, users []ChatUserRow) error {
+func (repository *chatRepository) addUsersToChatInTx(ctx context.Context, tx *sql.Tx, chatId int, users []ChatUserRow) error {
 	sql := `INSERT INTO messenger.chats_users(user_nickname, chat_id, role)
 	VALUES($1, $2, $3)`
-	stmt, err := tx.Prepare(sql)
+	stmt, err := tx.PrepareContext(ctx, sql)
 	if err != nil {
 		return err
 	}
 	for _, user := range users {
-		if _, err := stmt.Exec(user.nickname, chatId, user.role); err != nil {
+		if _, err := stmt.ExecContext(ctx, user.nickname, chatId, user.role); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (repository *chatRepository) GetChat(chatId int) (ChatRow, error) {
+func (repository *chatRepository) GetChat(ctx context.Context, chatId int) (ChatRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
 	getChatSql := `SELECT id, name FROM messenger.chats WHERE id = $1`
 	chat := ChatRow{}
-	err := repository.db.QueryRow(getChatSql, chatId).Scan(&chat.id, &chat.name)
+	err := repository.db.QueryRowContext(ctx, getChatSql, chatId).Scan(&chat.id, &chat.name)
 	if err != nil {
 		return ChatRow{}, err
 	}
@@ -115,9 +125,11 @@ func (repository *chatRepository) GetChat(chatId int) (ChatRow, error) {
 	return chat, nil
 }
 
-func (repository *chatRepository) GetNicknamesByChatId(chatId int) ([]string, error) {
+func (repository *chatRepository) GetNicknamesByChatId(ctx context.Context, chatId int) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
 	sql := `SELECT user_nickname FROM messenger.chats_users WHERE chat_id = $1`
-	rows, err := repository.db.Query(sql, chatId)
+	rows, err := repository.db.QueryContext(ctx, sql, chatId)
 	if err != nil {
 		return nil, err
 	}
@@ -133,9 +145,11 @@ func (repository *chatRepository) GetNicknamesByChatId(chatId int) ([]string, er
 	return nicknames, nil
 }
 
-func (repository *chatRepository) GetChatIds() ([]int, error) {
+func (repository *chatRepository) GetChatIds(ctx context.Context) ([]int, error) {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
 	sql := `SELECT id FROM messenger.chats`
-	rows, err := repository.db.Query(sql)
+	rows, err := repository.db.QueryContext(ctx, sql)
 	if err != nil {
 		return nil, err
 	}
@@ -151,11 +165,13 @@ func (repository *chatRepository) GetChatIds() ([]int, error) {
 	return chatIds, nil
 }
 
-func (repository *chatRepository) GetChatsNoUsersByNickname(nickname string) ([]ChatRow, error) {
+func (repository *chatRepository) GetChatsNoUsersByNickname(ctx context.Context, nickname string) ([]ChatRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
 	sql := `SELECT c.id, c.name FROM messenger.chats c
 			JOIN messenger.chats_users cu ON c.id = cu.chat_id
 			WHERE cu.user_nickname = $1`
-	rows, err := repository.db.Query(sql, nickname)
+	rows, err := repository.db.QueryContext(ctx, sql, nickname)
 	if err != nil {
 		return nil, err
 	}

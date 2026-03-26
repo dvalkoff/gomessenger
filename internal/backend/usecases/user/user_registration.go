@@ -1,13 +1,14 @@
 package user
 
 import (
+	"context"
 	"log/slog"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserRegistrationUseCase interface {
-	RegisterUser(UserRegistrationInfo) error
+	RegisterUser(context.Context, UserRegistrationInfo) error
 }
 
 type userRegistrationUseCase struct {
@@ -18,7 +19,7 @@ func NewUserUserRegistrationUseCase(userRepository UserRepository) UserRegistrat
 	return &userRegistrationUseCase{userRepository: userRepository}
 }
 
-func (useCase *userRegistrationUseCase) RegisterUser(userDto UserRegistrationInfo) error {
+func (useCase *userRegistrationUseCase) RegisterUser(ctx context.Context, userDto UserRegistrationInfo) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userDto.Password), bcrypt.DefaultCost)
 	if err != nil {
 		slog.Error("Failed to hash password", "error", err)
@@ -29,5 +30,5 @@ func (useCase *userRegistrationUseCase) RegisterUser(userDto UserRegistrationInf
 		Name:           userDto.Name,
 		HashedPassword: hashedPassword,
 	}
-	return useCase.userRepository.SaveUser(row)
+	return useCase.userRepository.SaveUser(ctx, row)
 }

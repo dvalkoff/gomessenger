@@ -33,7 +33,7 @@ func (controller *chatController) CreateChat() http.Handler {
 			}
 			createChatInfo.CreatorNickname = nickname
 
-			createdChat, err := controller.createChatUseCase.CreateChat(createChatInfo)
+			createdChat, err := controller.createChatUseCase.CreateChat(r.Context(), createChatInfo)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -49,7 +49,7 @@ func (controller *chatController) GetChats() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			nickname := utils.GetNickname(r.Context())
-			chats, err := controller.chatSelection.GetChats(nickname)
+			chats, err := controller.chatSelection.GetChats(r.Context(), nickname)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -71,7 +71,7 @@ func (controller *chatController) AddUserToChat() http.Handler {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			chatInfo, err := controller.createChatUseCase.AddUserToChat(nickname, addUserToChatInfo)
+			chatInfo, err := controller.createChatUseCase.AddUserToChat(r.Context(), nickname, addUserToChatInfo)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return

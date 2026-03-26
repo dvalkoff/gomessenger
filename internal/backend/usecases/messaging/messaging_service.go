@@ -1,12 +1,13 @@
 package messaging
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 )
 
 type MessagingService interface {
-	CreateClient(cci ClientConnectionInfo, w http.ResponseWriter, r *http.Request) error
+	CreateClient(ctx context.Context, cci ClientConnectionInfo, w http.ResponseWriter, r *http.Request) error
 }
 
 type messagingService struct {
@@ -21,8 +22,8 @@ func NewMessagingService(messaingHub MessagingHub, messagingRepository Messaging
 	}
 }
 
-func (service *messagingService) CreateClient(cci ClientConnectionInfo, w http.ResponseWriter, r *http.Request) error {
-	messages, err := service.messagingRepository.GetMessages(cci.nickname, cci.offset)
+func (service *messagingService) CreateClient(ctx context.Context, cci ClientConnectionInfo, w http.ResponseWriter, r *http.Request) error {
+	messages, err := service.messagingRepository.GetMessages(ctx, cci.nickname, cci.offset)
 	if err != nil {
 		slog.Error("Failed to get messages", "error", err)
 		return err

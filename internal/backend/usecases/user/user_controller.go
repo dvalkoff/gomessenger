@@ -37,7 +37,7 @@ func (controller *userController) RegisterUser() http.Handler {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			err = controller.userRegistrationUseCase.RegisterUser(userInfo)
+			err = controller.userRegistrationUseCase.RegisterUser(r.Context(), userInfo)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -55,7 +55,7 @@ func (controller *userController) FindUsers() http.Handler {
 				utils.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("nickname parameter shouldn't be empty"))
 				return
 			}
-			users, err := controller.findUsersUseCase.FindUsers(nickname)
+			users, err := controller.findUsersUseCase.FindUsers(r.Context(), nickname)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -77,7 +77,7 @@ func (controller *userController) AddFriend() http.Handler {
 				utils.EncodeError(w, r, http.StatusBadRequest, fmt.Errorf("friendsNickname parameter shouldn't be empty"))
 				return
 			}
-			err := controller.friendsService.AddFriend(nickname, friendsNickname)
+			err := controller.friendsService.AddFriend(r.Context(), nickname, friendsNickname)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 				return
@@ -91,7 +91,7 @@ func (controller *userController) GetFriends() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			nickname := utils.GetNickname(r.Context())
-			users, err := controller.friendsService.GetFriends(nickname)
+			users, err := controller.friendsService.GetFriends(r.Context(), nickname)
 			if err != nil {
 				utils.EncodeError(w, r, http.StatusInternalServerError, err)
 			}

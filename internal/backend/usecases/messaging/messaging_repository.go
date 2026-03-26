@@ -1,8 +1,13 @@
 package messaging
 
 import (
+	"context"
 	"database/sql"
 	"time"
+)
+
+const (
+	txTimeout = 1 * time.Second
 )
 
 type MessageRow struct {
@@ -14,8 +19,8 @@ type MessageRow struct {
 }
 
 type MessagingRepository interface {
-	GetMessages(nickname string, offset int) ([]MessageRow, error)
-	SaveMessage(message MessageRow) (MessageRow, error)
+	GetMessages(ctx context.Context, nickname string, offset int) ([]MessageRow, error)
+	SaveMessage(ctx context.Context, message MessageRow) (MessageRow, error)
 }
 
 type messagingRepository struct {
@@ -26,11 +31,13 @@ func NewMessagingRepository(db *sql.DB) MessagingRepository {
 	return &messagingRepository{db: db}
 }
 
-func (repository *messagingRepository) SaveMessage(message MessageRow) (MessageRow, error) {
+func (repository *messagingRepository) SaveMessage(ctx context.Context, message MessageRow) (MessageRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
 	sql := `INSERT INTO messenger.messages(payload, sender, chat_id, sent_at)
 	VALUES($1, $2, $3, $4) RETURNING id`
 	err := repository.db.
-		QueryRow(sql, message.payload, message.sender, message.chatId, message.sentAt).
+		QueryRowContext(ctx, sql, message.payload, message.sender, message.chatId, message.sentAt).
 		Scan(&message.id)
 	if err != nil {
 		return MessageRow{}, err
@@ -38,13 +45,15 @@ func (repository *messagingRepository) SaveMessage(message MessageRow) (MessageR
 	return message, nil
 }
 
-func (repository *messagingRepository) GetMessages(nickname string, offset int) ([]MessageRow, error) {
+func (repository *messagingRepository) GetMessages(ctx context.Context, nickname string, offset int) ([]MessageRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
 	sql := `
 	SELECT m.id, m.payload, m.sender, m.chat_id, m.sent_at FROM messenger.messages m
 	JOIN messenger.chats_users cu ON cu.chat_id = m.chat_id
 	WHERE cu.user_nickname = $1 AND m.id > $2
 	ORDER BY m.id`
-	rows, err := repository.db.Query(sql, nickname, offset)
+	rows, err := repository.db.QueryContext(ctx, sql, nickname, offset)
 	if err != nil {
 		return nil, err
 	}

@@ -1,9 +1,12 @@
 package chat
 
-import "log/slog"
+import (
+	"context"
+	"log/slog"
+)
 
 type ChatSelection interface {
-	GetChats(nickname string) ([]ChatInfoNoUsers, error)
+	GetChats(ctx context.Context, nickname string) ([]ChatInfoNoUsers, error)
 }
 
 type chatSelection struct {
@@ -14,8 +17,8 @@ func NewChatSelection(chatRepository ChatRepository) ChatSelection {
 	return &chatSelection{chatRepository: chatRepository}
 }
 
-func (cs *chatSelection) GetChats(nickname string) ([]ChatInfoNoUsers, error) {
-	chatRows, err := cs.chatRepository.GetChatsNoUsersByNickname(nickname)
+func (cs *chatSelection) GetChats(ctx context.Context, nickname string) ([]ChatInfoNoUsers, error) {
+	chatRows, err := cs.chatRepository.GetChatsNoUsersByNickname(ctx, nickname)
 	if err != nil {
 		slog.Error("Failed to get chats by nickname", "nickname", nickname, "error", err)
 		return nil, err

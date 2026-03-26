@@ -1,7 +1,9 @@
 package user
 
+import "context"
+
 type FindUsersUseCase interface {
-	FindUsers(string) ([]UserInfo, error)
+	FindUsers(ctx context.Context, username string) ([]UserInfo, error)
 }
 
 type findUsersUseCase struct {
@@ -12,8 +14,8 @@ func NewFindUsersUseCase(userRepository UserRepository) FindUsersUseCase {
 	return &findUsersUseCase{userRepository: userRepository}
 }
 
-func (useCase *findUsersUseCase) FindUsers(nicknameSubstring string) ([]UserInfo, error) {
-	users, err := useCase.userRepository.FindUsersByNickname(nicknameSubstring)
+func (useCase *findUsersUseCase) FindUsers(ctx context.Context, nicknameSubstring string) ([]UserInfo, error) {
+	users, err := useCase.userRepository.FindUsersByNickname(ctx, nicknameSubstring)
 	if err != nil {
 		return nil, err
 	}
